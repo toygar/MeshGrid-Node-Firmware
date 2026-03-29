@@ -30,6 +30,9 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 - [Troubleshooting](#troubleshooting)
 - [Important Notes](#important-notes)
 - [Release Usage Notice](#release-usage-notice)
+- [Expected Wiring](#expected-wiring)
+- [AT Mode Configuration Warning](#at-mode-configuration-warning)
+- [No Warranty / Compliance Disclaimer](#no-warranty--compliance-disclaimer)
 - [License](#license)
 
 ---
@@ -510,21 +513,6 @@ always refer to the corresponding GitHub Release page.
 
 ---
 
-## License
-
-This firmware is distributed for **personal and non-commercial use only**.  
-Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
-
-### Restrictions
-
-- ❌ Commercial redistribution is prohibited
-- ❌ Selling hardware pre-loaded with this firmware is prohibited
-- ❌ Reverse engineering is strictly prohibited
-
-By downloading, flashing, configuring, or using this firmware, you agree to comply with the license terms, distribution restrictions, and all applicable RF laws and regulations.
-
----
-
 ## Expected Wiring
 
 The current firmware build is intended for a specific MeshGrid-Node hardware layout using:
@@ -613,3 +601,19 @@ Users are solely responsible for:
 - selecting lawful region-specific RF parameters
 - ensuring antenna suitability
 - complying with all applicable local, national, and regional laws, regulations, certifications, and operating restrictions
+
+## License
+
+This firmware is distributed for **personal and non-commercial use only**.  
+Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+
+### Restrictions
+
+- ❌ Commercial redistribution is prohibited
+- ❌ Selling hardware pre-loaded with this firmware is prohibited
+- ❌ Reverse engineering is strictly prohibited
+
+By downloading, flashing, configuring, or using this firmware, you agree to comply with the license terms, distribution restrictions, and all applicable RF laws and regulations.
+
+---
+
