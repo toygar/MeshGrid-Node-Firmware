@@ -522,3 +522,94 @@ Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4
 - ❌ Reverse engineering is strictly prohibited
 
 By downloading, flashing, configuring, or using this firmware, you agree to comply with the license terms, distribution restrictions, and all applicable RF laws and regulations.
+
+---
+
+## Expected Wiring
+
+The current firmware build is intended for a specific MeshGrid-Node hardware layout using:
+
+- a supported **ESP32** board
+- an **EBYTE E22-900T22D** LoRa module
+- a **compatible antenna**
+
+> **Important:** Flashing the firmware alone does not guarantee functional radio operation. Correct wiring between the ESP32, the EBYTE E22-900T22D, and the required antenna is mandatory.
+
+Users must ensure that:
+
+- the selected ESP32 board matches the intended target build
+- the **EBYTE E22-900T22D** is physically present in the node
+- the module is connected using the expected wiring and pin mapping for that hardware revision
+- the radio module is supplied with an appropriate and stable power source
+- a compatible antenna is connected before RF operation
+- any auxiliary, mode-selection, UART, or control pins required by the hardware design are wired correctly
+
+If the hardware layout, pin mapping, or radio wiring differs from the intended MeshGrid-Node design, the firmware may:
+
+- boot successfully but fail to communicate over LoRa
+- behave unpredictably
+- provide unstable or degraded RF performance
+- fail to operate as intended
+
+The user is responsible for verifying that the actual hardware assembly matches the intended MeshGrid-Node wiring configuration before operation.
+
+---
+
+## AT Mode Configuration Warning
+
+The **EBYTE E22-900T22D** is a configurable radio module. Depending on the hardware setup and deployment requirements, the module may support parameter changes through **AT mode** or another configuration interface.
+
+These configurable parameters may include, but are not limited to:
+
+- operating frequency or channel settings
+- air data rate
+- UART baud rate
+- transmit power
+- packet-related radio parameters
+- other region-sensitive RF settings
+
+> **Warning:** Any configuration applied to the **EBYTE E22-900T22D** through **AT mode** or any other configuration method is performed entirely at the user's own responsibility.
+
+The user is solely responsible for:
+
+- selecting settings that are lawful in the country or region of operation
+- ensuring that configured frequency ranges, channel plans, air rate, power level, and related RF parameters comply with applicable regulations
+- ensuring that the selected antenna and resulting transmission characteristics remain compliant with local legal limits
+- avoiding unlawful or non-compliant radio operation
+
+The firmware distributor, repository maintainer, and release publisher do **not** certify, guarantee, or represent that any user-selected module configuration is lawful, compliant, or appropriate for any particular jurisdiction.
+
+If there is any uncertainty regarding lawful radio settings, the device must **not** be placed into transmission service until the configuration has been verified by the user against the applicable regional requirements.
+
+---
+
+## No Warranty / Compliance Disclaimer
+
+This repository and its firmware releases are provided on an **"as is"** basis, without warranties of any kind, whether express or implied.
+
+To the maximum extent permitted by applicable law:
+
+- no warranty is provided regarding fitness for a particular purpose
+- no warranty is provided regarding uninterrupted or error-free operation
+- no warranty is provided regarding compatibility with every hardware variant or regional RF environment
+- no warranty is provided regarding legal compliance of any specific radio configuration, antenna selection, or deployment scenario
+
+The firmware distributor, repository maintainer, and release publisher disclaim responsibility for:
+
+- incorrect hardware assembly
+- incorrect wiring
+- incompatible antennas
+- unsupported board or module combinations
+- unlawful RF configuration
+- regulatory violations
+- damage, interference, malfunction, or loss resulting from misuse, misconfiguration, or non-compliant operation
+
+Use of this firmware, the **EBYTE E22-900T22D** module, and any associated RF hardware is entirely at the user's own risk.
+
+Users are solely responsible for:
+
+- verifying hardware compatibility
+- confirming correct wiring and safe assembly
+- selecting lawful region-specific RF parameters
+- ensuring antenna suitability
+- complying with all applicable local, national, and regional laws, regulations, certifications, and operating restrictions
