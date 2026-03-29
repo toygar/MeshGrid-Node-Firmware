@@ -1,16 +1,20 @@
 # MeshGrid-Node-Firmware
 
 Official firmware distribution and installation guide for **MeshGrid-Node**.  
-This repository provides official firmware releases and flashing instructions for supported ESP32-based boards used in the MeshGrid ecosystem.
+This repository provides official firmware releases and flashing instructions for supported ESP32-based boards **and the required LoRa radio hardware** used in the MeshGrid ecosystem.
 
 MeshGrid-Node is designed to enable **encrypted 868 MHz LoRa mesh communication** and support **offline coordination and tactical mapping workflows** for small teams and field-oriented use cases.
+
+> **Important:** The current firmware build is intended to run on supported ESP32 boards **together with the EBYTE E22-900T22D LoRa module**. The LoRa radio is a required hardware component for MeshGrid-Node operation and is not optional.
 
 ---
 
 ## Table of Contents
 
 - [Overview](#overview)
-- [Supported Boards](#supported-boards)
+- [Supported Hardware](#supported-hardware)
+  - [Supported Boards](#supported-boards)
+  - [Required LoRa Module](#required-lora-module)
 - [Release Scope](#release-scope)
 - [Firmware Installation](#firmware-installation)
   - [Requirements](#requirements)
@@ -30,7 +34,7 @@ MeshGrid-Node is designed to enable **encrypted 868 MHz LoRa mesh communication*
 
 ## Overview
 
-MeshGrid-Node-Firmware is the official firmware distribution repository for MeshGrid-compatible ESP32 nodes.
+MeshGrid-Node-Firmware is the official firmware distribution repository for MeshGrid-compatible nodes.
 
 The firmware is intended to provide a lightweight, encrypted LoRa mesh communication layer for offline operation in constrained environments. The primary focus is practical field deployment on supported ESP32 hardware using prebuilt firmware binaries distributed through GitHub Releases.
 
@@ -41,16 +45,34 @@ This repository is intended for:
 - Release-specific binary information
 - End-user flashing guidance for supported hardware
 
+> MeshGrid-Node is **not an ESP32-only firmware target**. The firmware is built for a node configuration that includes both a supported ESP32 board and the **EBYTE E22-900T22D** LoRa radio module.
+
 ---
 
-## Supported Boards
+## Supported Hardware
+
+### Supported Boards
 
 The current firmware release is intended for the following ESP32-based boards:
 
 - **ESP32-S**
 - **ESP32 DevKit V1**
 
-> Before flashing, make sure the selected firmware binary matches the target board, hardware revision, and expected MeshGrid-Node wiring configuration.
+### Required LoRa Module
+
+The current MeshGrid-Node firmware build expects the following LoRa radio module in the target hardware:
+
+- **EBYTE E22-900T22D**
+
+The EBYTE E22-900T22D is a required part of the supported MeshGrid-Node hardware configuration for this firmware release.
+
+Important compatibility notes:
+
+- A supported ESP32 board alone is **not sufficient**
+- The firmware expects the node to include the **EBYTE E22-900T22D** module
+- The prebuilt binary is intended for the expected MeshGrid-Node wiring and hardware layout
+- If a different LoRa module, different pin mapping, or a different radio wiring layout is used, the firmware may flash successfully but LoRa communication may fail or behave unpredictably
+- Always verify that the selected firmware binary matches the target board, radio module, hardware revision, and expected MeshGrid-Node wiring configuration
 
 ---
 
@@ -70,6 +92,8 @@ Depending on the release, firmware may be provided in one of the following forma
      - `boot_app0.bin`
      - `firmware.bin`
 
+These releases are intended for supported ESP32 boards used with the **EBYTE E22-900T22D** LoRa module in the expected MeshGrid-Node hardware configuration.
+
 Always check the corresponding GitHub Release page for the exact binary layout, compatibility notes, offsets, and any release-specific instructions.
 
 ---
@@ -82,7 +106,8 @@ This section explains how to flash the released `.bin` firmware file to a suppor
 
 #### Hardware
 
-- 1 × ESP32-S or ESP32 DevKit V1
+- 1 × **ESP32-S** or **ESP32 DevKit V1**
+- 1 × **EBYTE E22-900T22D** LoRa module
 - 1 × USB data cable
 - A computer running Windows, macOS, or Linux
 
@@ -99,6 +124,8 @@ Depending on the USB-to-serial chip used by your ESP32 board, you may need one o
 - **CH340**
 
 If the board does not appear as a serial device after connecting it, install the correct driver before continuing.
+
+> Flashing the firmware installs the software on the ESP32. For the node to provide LoRa functionality after boot, the **EBYTE E22-900T22D** must also be present and connected correctly according to the intended MeshGrid-Node hardware design.
 
 ---
 
@@ -147,6 +174,8 @@ esptool.py version
 Connect the ESP32 board to your computer using a **USB data cable**.
 
 > Some USB cables only provide power and do not support data transfer. If the board is not detected, try another cable before troubleshooting further.
+
+> **Important:** The USB cable is used to flash the ESP32. The complete MeshGrid-Node hardware is expected to include the **EBYTE E22-900T22D** module connected to the ESP32 with the correct wiring required by the target build.
 
 ---
 
@@ -288,6 +317,8 @@ After flashing completes successfully:
 - Mesh or Bluetooth services become available if enabled by the build
 - The board behaves consistently after a reboot
 
+> A successful flash only confirms that the ESP32 firmware was written correctly. Full MeshGrid-Node operation also depends on the **EBYTE E22-900T22D** being installed and wired correctly.
+
 ---
 
 ## Troubleshooting
@@ -356,6 +387,27 @@ Recommended fix:
 
 ---
 
+### Firmware boots but LoRa communication does not work
+
+Possible causes:
+
+- The **EBYTE E22-900T22D** module is missing
+- The LoRa module is not powered correctly
+- The wiring between the ESP32 and E22-900T22D is wrong or incomplete
+- The board and radio module do not match the expected MeshGrid-Node hardware layout
+- The build was flashed to unsupported hardware
+- The firmware expects a different pin mapping or wiring configuration
+
+Recommended actions:
+
+1. Confirm that the node includes the **EBYTE E22-900T22D**
+2. Re-check the intended MeshGrid-Node wiring
+3. Confirm that the selected firmware release supports your exact board and hardware revision
+4. Verify that the radio module is connected exactly as expected by the target build
+5. Re-read the release notes for hardware compatibility and known limitations
+
+---
+
 ### Serial output is missing after flashing
 
 Possible causes:
@@ -376,10 +428,12 @@ Recommended actions:
 
 ## Important Notes
 
+- The current MeshGrid-Node firmware build requires a supported ESP32 board **and** the **EBYTE E22-900T22D** LoRa module
 - Only use official firmware binaries published in this repository or official MeshGrid release channels
 - Flashing unofficial or modified binaries may cause instability, incompatibility, or loss of expected functionality
 - Always verify that the firmware release matches your hardware revision before installation
 - Do not assume all releases use the same binary layout or flash offsets
+- Do not assume the firmware supports different LoRa modules unless the release notes explicitly say so
 - Read the corresponding GitHub Release notes before flashing any new version
 
 ---
@@ -395,6 +449,7 @@ For release-specific details such as:
 - binary type
 - flash offsets
 - supported boards
+- required radio hardware
 - feature availability
 - known limitations
 - compatibility notes
