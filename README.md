@@ -1,215 +1,246 @@
 # MeshGrid-Node-Firmware
 
-**MeshGrid-Node** için resmi firmware dağıtım ve kurulum kılavuzu.  
-Bu depo, MeshGrid ekosisteminde kullanılan desteklenen ESP32 tabanlı kartlar **ve gerekli LoRa radyo donanımı** için resmi firmware sürümlerini ve yükleme talimatlarını sağlar.
+Official firmware distribution and installation guide for **MeshGrid-Node**.  
+This repository provides official firmware releases and flashing instructions for supported ESP32-based boards **and the required LoRa radio hardware** used in the MeshGrid ecosystem.
 
-MeshGrid-Node; **şifreli sub-GHz LoRa mesh haberleşmesini** etkinleştirmek ve küçük ekipler ile saha odaklı kullanım senaryoları için **çevrimdışı koordinasyon ve taktik haritalama iş akışlarını** desteklemek üzere tasarlanmıştır.
+MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication** and support **offline coordination and tactical mapping workflows** for small teams and field-oriented use cases.
 
-> **Önemli:** Mevcut firmware derlemesi, desteklenen ESP32 kartları ile birlikte **EBYTE E22-900T22D LoRa modülü ve uyumlu bir anten** ile çalışacak şekilde tasarlanmıştır. LoRa radyo modülü ve anten, MeshGrid-Node’un çalışması için gerekli donanım bileşenleridir; isteğe bağlı değildir.
+> **Important:** The current firmware build is intended to run on supported ESP32 boards **together with the EBYTE E22-900T22D LoRa module and a compatible antenna**. The LoRa radio and antenna are required hardware components for MeshGrid-Node operation and are not optional.
 
----
-
-## İçindekiler
-
-- [Genel Bakış](#genel-bakış)
-- [Desteklenen Donanım](#desteklenen-donanım)
-  - [Desteklenen Kartlar](#desteklenen-kartlar)
-  - [Gerekli LoRa Modülü](#gerekli-lora-modülü)
-  - [Gerekli Anten](#gerekli-anten)
-- [Radyo Uyumluluğu ve Kullanıcı Sorumluluğu](#radyo-uyumluluğu-ve-kullanıcı-sorumluluğu)
-- [Sürüm Kapsamı](#sürüm-kapsamı)
-- [Firmware Kurulumu](#firmware-kurulumu)
-  - [Gereksinimler](#gereksinimler)
-  - [Önerilen Yükleme Yöntemi](#önerilen-yükleme-yöntemi)
-  - [Kartın Bağlanması](#kartın-bağlanması)
-  - [Seri Portun Bulunması](#seri-portun-bulunması)
-  - [Firmware’in Yüklenmesi](#firmwarein-yüklenmesi)
-  - [Manuel Bootloader Modu](#manuel-bootloader-modu)
-  - [İsteğe Bağlı: Kurulum Öncesi Flash Belleği Silme](#isteğe-bağlı-kurulum-öncesi-flash-belleği-silme)
-  - [Kurulumu Doğrulama](#kurulumu-doğrulama)
-- [Sorun Giderme](#sorun-giderme)
-- [Önemli Notlar](#önemli-notlar)
-- [Sürüm Kullanım Bildirimi](#sürüm-kullanım-bildirimi)
-- [Beklenen Bağlantı Yapısı](#beklenen-bağlantı-yapısı)
-- [AT Modu Yapılandırma Uyarısı](#at-modu-yapılandırma-uyarısı)
-- [Garanti Yok / Uyumluluk Feragati](#garanti-yok--uyumluluk-feragati)
-- [Lisans](#lisans)
+> **Important:** This firmware is intended to communicate **only with the official MeshGrid mobile application** distributed through the **Apple App Store** and **Google Play Store**. Compatibility with third-party applications, unofficial clients, or alternative software is not guaranteed and is not part of the supported use case.
 
 ---
 
-## Genel Bakış
+## Table of Contents
 
-MeshGrid-Node-Firmware, MeshGrid uyumlu düğümler için resmi firmware dağıtım deposudur.
-
-Bu firmware; kısıtlı ortamlarda çevrimdışı kullanım için hafif ve şifreli bir LoRa mesh haberleşme katmanı sağlamak amacıyla tasarlanmıştır. Ana odak, GitHub Releases üzerinden dağıtılan önceden derlenmiş firmware ikilileri kullanılarak desteklenen ESP32 donanımları üzerinde pratik saha kullanımıdır.
-
-Bu depo şu amaçlarla kullanılmak üzere tasarlanmıştır:
-
-- Resmi firmware dağıtımı
-- Firmware kurulum talimatları
-- Sürüme özel ikili dosya bilgileri
-- Desteklenen donanımlar için son kullanıcı yükleme rehberi
-
-> MeshGrid-Node, **yalnızca ESP32 hedefli bir firmware değildir**. Bu firmware; desteklenen bir ESP32 kartı, **EBYTE E22-900T22D** LoRa radyo modülü ve **uyumlu bir anten** içeren bir düğüm yapılandırması için hazırlanmıştır.
+- [Overview](#overview)
+- [Official Mobile App Compatibility](#official-mobile-app-compatibility)
+- [Supported Hardware](#supported-hardware)
+  - [Supported Boards](#supported-boards)
+  - [Required LoRa Module](#required-lora-module)
+  - [Required Antenna](#required-antenna)
+- [Radio Compliance and User Responsibility](#radio-compliance-and-user-responsibility)
+- [Release Scope](#release-scope)
+- [Firmware Installation](#firmware-installation)
+  - [Requirements](#requirements)
+  - [Recommended Flashing Method](#recommended-flashing-method)
+  - [Connecting the Board](#connecting-the-board)
+  - [Finding the Serial Port](#finding-the-serial-port)
+  - [Flashing the Firmware](#flashing-the-firmware)
+  - [Manual Bootloader Mode](#manual-bootloader-mode)
+  - [Optional: Erase Flash Before Installation](#optional-erase-flash-before-installation)
+  - [Verifying the Installation](#verifying-the-installation)
+- [Getting Started After Installation](#getting-started-after-installation)
+- [Troubleshooting](#troubleshooting)
+- [Important Notes](#important-notes)
+- [Release Usage Notice](#release-usage-notice)
+- [Expected Wiring](#expected-wiring)
+- [AT Mode Configuration Warning](#at-mode-configuration-warning)
+- [No Warranty / Compliance Disclaimer](#no-warranty--compliance-disclaimer)
+- [License](#license)
 
 ---
 
-## Desteklenen Donanım
+## Overview
 
-### Desteklenen Kartlar
+MeshGrid-Node-Firmware is the official firmware distribution repository for MeshGrid-compatible nodes.
 
-Mevcut firmware sürümü, aşağıdaki ESP32 tabanlı kartlar için tasarlanmıştır:
+The firmware is intended to provide a lightweight, encrypted LoRa mesh communication layer for offline operation in constrained environments. The primary focus is practical field deployment on supported ESP32 hardware using prebuilt firmware binaries distributed through GitHub Releases.
+
+This repository is intended for:
+
+- Official firmware distribution
+- Firmware installation instructions
+- Release-specific binary information
+- End-user flashing guidance for supported hardware
+
+> MeshGrid-Node is **not an ESP32-only firmware target**. The firmware is built for a node configuration that includes a supported ESP32 board, the **EBYTE E22-900T22D** LoRa radio module, and a **compatible antenna**.
+
+---
+
+## Official Mobile App Compatibility
+
+This firmware is designed for use with the **official MeshGrid mobile application** only.
+
+Supported client distribution channels:
+
+- **Apple App Store** — official MeshGrid iOS application
+- **Google Play Store** — official MeshGrid Android application
+
+Official store links will be published here when available:
+
+- **App Store:** `<ADD_APP_STORE_LINK_HERE>`
+- **Google Play:** `<ADD_GOOGLE_PLAY_LINK_HERE>`
+
+Important compatibility notes:
+
+- This firmware is intended to communicate only with the official MeshGrid app
+- Compatibility with third-party apps, custom clients, community tools, reverse-engineered software, or unofficial integrations is not guaranteed
+- Unsupported software may fail to pair, fail to exchange data correctly, or behave unpredictably
+- Protocol behavior, pairing logic, feature availability, and message handling are defined by the supported MeshGrid ecosystem only
+
+After completing firmware installation and hardware setup, users can install the official MeshGrid app on a supported mobile device and use it to interact with MeshGrid nodes.
+
+Once two supported nodes are installed, configured, and operating correctly, communication between two nodes can be established through the supported MeshGrid workflow in the official mobile app.
+
+---
+
+## Supported Hardware
+
+### Supported Boards
+
+The current firmware release is intended for the following ESP32-based boards:
 
 - **ESP32-S**
 - **ESP32 DevKit V1**
 
-### Gerekli LoRa Modülü
+### Required LoRa Module
 
-Mevcut MeshGrid-Node firmware derlemesi, hedef donanımda aşağıdaki LoRa radyo modülünü bekler:
+The current MeshGrid-Node firmware build expects the following LoRa radio module in the target hardware:
 
 - **EBYTE E22-900T22D**
 
-EBYTE E22-900T22D, bu firmware sürümü için desteklenen MeshGrid-Node donanım yapılandırmasının zorunlu bir parçasıdır.
+The EBYTE E22-900T22D is a required part of the supported MeshGrid-Node hardware configuration for this firmware release.
 
-Önemli uyumluluk notları:
+Important compatibility notes:
 
-- Yalnızca desteklenen bir ESP32 kartı **yeterli değildir**
-- Firmware, düğümün **EBYTE E22-900T22D** modülünü içermesini bekler
-- Önceden derlenmiş ikili dosya, beklenen MeshGrid-Node bağlantı düzeni ve donanım yerleşimi için hazırlanmıştır
-- Farklı bir LoRa modülü, farklı pin eşlemesi veya farklı bir radyo bağlantı düzeni kullanılırsa firmware başarıyla yüklenebilir; ancak LoRa haberleşmesi çalışmayabilir veya öngörülemez davranabilir
-- Seçilen firmware ikilisinin hedef karta, radyo modülüne, donanım revizyonuna ve beklenen MeshGrid-Node bağlantı yapılandırmasına uygun olduğunu her zaman doğrulayın
+- A supported ESP32 board alone is **not sufficient**
+- The firmware expects the node to include the **EBYTE E22-900T22D** module
+- The prebuilt binary is intended for the expected MeshGrid-Node wiring and hardware layout
+- If a different LoRa module, different pin mapping, or a different radio wiring layout is used, the firmware may flash successfully but LoRa communication may fail or behave unpredictably
+- Always verify that the selected firmware binary matches the target board, radio module, hardware revision, and expected MeshGrid-Node wiring configuration
 
-### Gerekli Anten
+### Required Antenna
 
-**EBYTE E22-900T22D** ile çalışmak için ayrıca **uyumlu bir anten** gereklidir.
+A **compatible antenna** is also required for operation with the **EBYTE E22-900T22D**.
 
-Önemli anten notları:
+Important antenna notes:
 
-- Radyo modülü tek başına eksiksiz bir RF çözümü olarak değerlendirilmemelidir
-- Modülü uygun bir anten olmadan çalıştırmak düşük performansa, kararsız çalışmaya veya donanım riski oluşmasına neden olabilir
-- Kullanılan anten, seçilen çalışma bandına ve hedef bölgesel kullanıma uygun olmalıdır
-- Yapılandırılan frekans bandı, kurulum koşulları ve geçerli yasal gereklilikler açısından elektriksel ve mevzuatsal olarak uygun bir anten seçmek kullanıcının sorumluluğundadır
-
----
-
-## Radyo Uyumluluğu ve Kullanıcı Sorumluluğu
-
-Sub-GHz bantlarında çalışan radyo cihazları; **bölgesel, ulusal ve yerel RF düzenlemelerine** tabidir. Bu kurallar ülkeye ve yargı alanına göre değişir ve radyo yapılandırması ile çalıştırılması üzerinde gereklilikler veya kısıtlamalar getirebilir.
-
-Bu gereklilikler şunları içerebilir, ancak bunlarla sınırlı değildir:
-
-- izin verilen frekans bantları
-- kanal veya merkez frekans seçimi
-- iletim gücü sınırları
-- bant genişliği ve işgal edilen spektrum sınırları
-- duty cycle veya kanal erişim kısıtlamaları
-- modülasyonla ilgili ayarlar
-- antenle ilgili sınırlamalar
-- uygun olan yerlerde sertifikasyon, kayıt veya diğer yasal yükümlülükler
-
-> **Yasal Uyarı:** **EBYTE E22-900T22D**, yapılandırılabilir bir radyo modülüdür. Modül **AT yapılandırma modunda** veya başka bir yapılandırılabilir arayüz üzerinden çalıştırılıyorsa, bölgeye özgü RF parametrelerinin seçimi ve uygulanması **tamamen kullanıcının sorumluluğundadır**.
-
-Bu, uygun olduğu durumlarda şunları kapsar:
-
-- cihazın yerel olarak izin verilen **868 MHz**, **900 MHz** veya diğer izinli bölgesel çalışma aralıkları için yapılandırılıp yapılandırılmayacağını seçmek
-- yapılandırılan radyo parametrelerinin cihazın kullanıldığı ülke veya bölgenin yasa ve düzenlemelerine uygun olmasını sağlamak
-- seçilen antenin ve ortaya çıkan RF davranışının yerel yasal gerekliliklerle uyumlu olmasını sağlamak
-
-Firmware dağıtıcısı, depo yöneticisi ve sürüm yayımlayıcısı; varsayılan veya kullanıcı tarafından seçilen radyo parametrelerinin her ülke, bölge veya kullanım ortamında yasal olduğunu **garanti etmez**.
-
-Kullanıcılar, cihazı çalıştırmadan önce geçerli tüm yasaları, düzenlemeleri, lisans kurallarını ve teknik sınırları bağımsız olarak doğrulamak ve bunlara uymak zorundadır.
-
-Belirli bir yapılandırmanın bulunduğunuz yerde yasal olup olmadığından emin değilseniz, ilgili yargı alanındaki kurallara göre incelenene kadar **iletim yapmayın**.
+- The radio module must **not** be treated as a complete RF solution on its own
+- Operating the module without a suitable antenna may result in poor performance, unstable operation, or hardware risk
+- The antenna used must be appropriate for the selected operating band and the intended regional deployment
+- The user is responsible for selecting an antenna that is electrically and regulatorily appropriate for the configured frequency band, installation conditions, and applicable legal requirements
 
 ---
 
-## Sürüm Kapsamı
+## Radio Compliance and User Responsibility
 
-Bu depo, `.bin` formatında **önceden derlenmiş firmware ikili dosyaları** dağıtır.
+Radio devices operating in sub-GHz bands are subject to **regional, national, and local RF regulations**. These rules vary by country and jurisdiction and may impose requirements or restrictions on radio configuration and operation.
 
-Sürüme bağlı olarak firmware aşağıdaki biçimlerden biriyle sağlanabilir:
+Such requirements may include, but are not limited to:
 
-1. **Tek birleşik imaj**
-   - Tüm flash imajını içeren tek bir `.bin` dosyası
+- allowed frequency bands
+- channel or center frequency selection
+- transmit power limits
+- bandwidth and occupied spectrum limits
+- duty-cycle or channel access restrictions
+- modulation-related settings
+- antenna-related limitations
+- certification, registration, or other legal obligations where applicable
 
-2. **Çok dosyalı firmware paketi**
-   - Aşağıdakiler gibi ayrı dosyalar:
+> **Legal Notice:** The **EBYTE E22-900T22D** is a configurable radio module. If the module is operated in **AT configuration mode** or by any other configurable interface, the selection and application of region-specific RF parameters are the **sole responsibility of the user**.
+
+This includes, where applicable:
+
+- selecting whether the device is configured for a locally permitted **868 MHz**, **900 MHz**, or other allowed regional operating range
+- ensuring that configured radio parameters comply with the laws and regulations of the country or region where the device is used
+- ensuring that the selected antenna and resulting RF behavior remain compliant with local legal requirements
+
+The firmware distributor, repository maintainer, and release publisher do **not** guarantee that any default or user-selected radio parameters are lawful in every country, territory, or deployment environment.
+
+Users must independently verify and comply with all applicable laws, regulations, licensing rules, and technical limits before operating the device.
+
+If you are unsure whether a given configuration is legal in your location, **do not transmit** until the configuration has been reviewed against the applicable rules for that jurisdiction.
+
+---
+
+## Release Scope
+
+This repository distributes **prebuilt firmware binaries** in `.bin` format.
+
+Depending on the release, firmware may be provided in one of the following formats:
+
+1. **Single merged image**
+   - One `.bin` file containing the full flash image
+
+2. **Multi-file firmware package**
+   - Separate files such as:
      - `bootloader.bin`
      - `partitions.bin`
      - `boot_app0.bin`
      - `firmware.bin`
 
-Bu sürümler; beklenen MeshGrid-Node donanım yapılandırmasında, **EBYTE E22-900T22D** LoRa modülü ve **uyumlu bir anten** ile kullanılan desteklenen ESP32 kartları için tasarlanmıştır.
+These releases are intended for supported ESP32 boards used with the **EBYTE E22-900T22D** LoRa module and a **compatible antenna** in the expected MeshGrid-Node hardware configuration.
 
-Kesin ikili dosya düzeni, uyumluluk notları, ofsetler ve sürüme özel talimatlar için her zaman ilgili GitHub Release sayfasını kontrol edin.
+Always check the corresponding GitHub Release page for the exact binary layout, compatibility notes, offsets, and any release-specific instructions.
 
 ---
 
-## Firmware Kurulumu
+## Firmware Installation
 
-Bu bölüm, yayımlanmış `.bin` firmware dosyasının desteklenen bir ESP32 karta nasıl yükleneceğini açıklar.
+This section explains how to flash the released `.bin` firmware file to a supported ESP32 board.
 
-### Gereksinimler
+### Requirements
 
-#### Donanım
+#### Hardware
 
-- 1 × **ESP32-S** veya **ESP32 DevKit V1**
-- 1 × **EBYTE E22-900T22D** LoRa modülü
-- 1 × seçilen çalışma bandı için **uyumlu anten**
-- 1 × USB veri kablosu
-- Windows, macOS veya Linux çalıştıran bir bilgisayar
+- 1 × **ESP32-S** or **ESP32 DevKit V1**
+- 1 × **EBYTE E22-900T22D** LoRa module
+- 1 × **compatible antenna** for the selected operating band
+- 1 × USB data cable
+- A computer running Windows, macOS, or Linux
 
-#### Yazılım
+#### Software
 
 - Python 3
 - `esptool`
 
-#### USB Sürücüleri
+#### USB Drivers
 
-ESP32 kartınızda kullanılan USB-seri dönüştürücü çipe bağlı olarak aşağıdaki sürücülerden birine ihtiyaç duyabilirsiniz:
+Depending on the USB-to-serial chip used by your ESP32 board, you may need one of the following drivers:
 
 - **CP210x**
 - **CH340**
 
-Kart bağlandıktan sonra seri aygıt olarak görünmüyorsa, devam etmeden önce doğru sürücüyü yükleyin.
+If the board does not appear as a serial device after connecting it, install the correct driver before continuing.
 
-> Firmware’i yüklemek, yazılımı ESP32 üzerine kurar. Düğümün açıldıktan sonra LoRa işlevi sağlayabilmesi için **EBYTE E22-900T22D** ve **uyumlu bir antenin** de mevcut olması ve hedeflenen MeshGrid-Node donanım tasarımına uygun şekilde doğru bağlanmış olması gerekir.
+> Flashing the firmware installs the software on the ESP32. For the node to provide LoRa functionality after boot, the **EBYTE E22-900T22D** and a **compatible antenna** must also be present and connected correctly according to the intended MeshGrid-Node hardware design.
 
 ---
 
-## Önerilen Yükleme Yöntemi
+## Recommended Flashing Method
 
-MeshGrid firmware’ini kurmak için önerilen ve en güvenilir yöntem **esptool** kullanmaktır.
+The recommended and most reliable method for installing MeshGrid firmware is **esptool**.
 
-### 1. Python’u Kurun
+### 1. Install Python
 
-Python 3’ün zaten kurulu olup olmadığını kontrol edin:
+Check whether Python 3 is already installed:
 
 ```bash
 python --version
 ```
 
-veya:
+or:
 
 ```bash
 python3 --version
 ```
 
-### 2. esptool Kurulumu
+### 2. Install esptool
 
-`esptool` aracını pip ile kurun:
+Install `esptool` using pip:
 
 ```bash
 pip install esptool
 ```
 
-Sisteminiz `pip3` kullanıyorsa şunu çalıştırın:
+If your system uses `pip3`, run:
 
 ```bash
 pip3 install esptool
 ```
 
-Kurulumu şu komutla doğrulayabilirsiniz:
+You can confirm the installation with:
 
 ```bash
 esptool.py version
@@ -217,76 +248,76 @@ esptool.py version
 
 ---
 
-## Kartın Bağlanması
+## Connecting the Board
 
-ESP32 kartını bilgisayarınıza bir **USB veri kablosu** ile bağlayın.
+Connect the ESP32 board to your computer using a **USB data cable**.
 
-> Bazı USB kablolar yalnızca güç sağlar ve veri aktarımını desteklemez. Kart algılanmazsa sorun gidermeye geçmeden önce başka bir kablo deneyin.
+> Some USB cables only provide power and do not support data transfer. If the board is not detected, try another cable before troubleshooting further.
 
-> **Önemli:** USB kablosu ESP32’yi flashlamak için kullanılır. Tam MeshGrid-Node donanımının, hedef derlemenin gerektirdiği doğru bağlantılarla ESP32’ye bağlanmış **EBYTE E22-900T22D** modülünü ve **uyumlu bir anteni** içermesi beklenir.
+> **Important:** The USB cable is used to flash the ESP32. The complete MeshGrid-Node hardware is expected to include the **EBYTE E22-900T22D** module and a **compatible antenna**, connected to the ESP32 with the correct wiring required by the target build.
 
 ---
 
-## Seri Portun Bulunması
+## Finding the Serial Port
 
 ### Windows
 
-**Aygıt Yöneticisi**ni açın ve şu bölümün altında kontrol edin:
+Open **Device Manager** and check under:
 
-- **Bağlantı Noktaları (COM ve LPT)**
+- **Ports (COM & LPT)**
 
-Tipik örnekler:
+Typical examples:
 
 - `COM3`
 - `COM5`
 
 ### macOS
 
-Şunu çalıştırın:
+Run:
 
 ```bash
 ls /dev/cu.*
 ```
 
-Tipik örnekler:
+Typical examples:
 
 - `/dev/cu.usbserial-0001`
 - `/dev/cu.SLAB_USBtoUART`
 
 ### Linux
 
-Şunu çalıştırın:
+Run:
 
 ```bash
 ls /dev/ttyUSB* /dev/ttyACM*
 ```
 
-Tipik örnekler:
+Typical examples:
 
 - `/dev/ttyUSB0`
 - `/dev/ttyACM0`
 
 ---
 
-## Firmware’in Yüklenmesi
+## Flashing the Firmware
 
-İki yaygın firmware sürüm biçimi vardır.
+There are two common firmware release formats.
 
-### Seçenek A — Tek Birleşik Firmware `.bin`
+### Option A — Single Merged Firmware `.bin`
 
-Sürümde **tek bir birleşik firmware dosyası** varsa, bunu `0x0000` adresine yükleyin:
+If the release contains **one merged firmware file**, flash it at address `0x0000`:
 
 ```bash
 esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
 ```
 
-#### Örnek (Windows)
+#### Example (Windows)
 
 ```bash
 esptool.py --chip esp32 --port COM5 --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
 ```
 
-#### Örnek (macOS / Linux)
+#### Example (macOS / Linux)
 
 ```bash
 esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
@@ -294,18 +325,18 @@ esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash 
 
 ---
 
-### Seçenek B — Birden Fazla `.bin` Dosyası
+### Option B — Multiple `.bin` Files
 
-Sürüm aşağıdaki gibi ayrı dosyalar içeriyorsa:
+If the release contains separate files such as:
 
 - `bootloader.bin`
 - `partitions.bin`
 - `boot_app0.bin`
 - `firmware.bin`
 
-bunlar doğru ofsetlerle flashlanmalıdır.
+then they must be flashed using the correct offsets.
 
-Tipik ESP32 flash düzeni:
+Typical ESP32 flash layout:
 
 ```bash
 esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z \
@@ -315,304 +346,343 @@ esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z \
 0x10000 firmware.bin
 ```
 
-> Örnektekinden farklıysa, sürüm notlarında verilen tam ofsetleri kullanın. Bu derleme için asıl referans sürüm sayfasıdır.
+> Use the exact offsets provided in the release notes if they differ from the example above. The release page is the source of truth for that build.
 
 ---
 
-## Manuel Bootloader Modu
+## Manual Bootloader Mode
 
-Bazı ESP32 kartları otomatik olarak flashlama moduna geçmez.
+Some ESP32 boards do not automatically enter flashing mode.
 
-Flashlama başarısız olursa manuel bootloader modunu kullanın:
+If flashing fails, use manual bootloader mode:
 
-1. **BOOT** düğmesine basılı tutun
-2. **EN** düğmesine basıp bırakın
-3. **BOOT** düğmesini 2–3 saniye daha basılı tutun
-4. Flashlama komutunu başlatın
-5. Yükleme başladığında **BOOT** düğmesini bırakın
+1. Press and hold the **BOOT** button
+2. Press and release the **EN** button
+3. Keep holding **BOOT** for 2–3 seconds
+4. Start the flashing command
+5. Release **BOOT** once the upload begins
 
-Bu yöntem, `esptool` kartla bağlantı kuramadığında sıklıkla gereklidir.
+This is commonly required when `esptool` cannot establish a connection with the board.
 
 ---
 
-## İsteğe Bağlı: Kurulum Öncesi Flash Belleği Silme
+## Optional: Erase Flash Before Installation
 
-Eski bir derlemeden yükseltme yapıyorsanız ve açılış sorunları, bozulmuş ayarlar veya beklenmeyen davranışlarla karşılaşıyorsanız, önce flash belleği silin:
+If you are upgrading from an older build and encounter boot issues, corrupted settings, or unexpected behavior, erase the flash first:
 
 ```bash
 esptool.py --chip esp32 --port <PORT> erase_flash
 ```
 
-Ardından flashlama komutunu yeniden çalıştırın.
+Then run the flashing command again.
 
-> Flash belleği silmek; kaydedilmiş yapılandırmaları, eşleştirme bilgilerini, kayıtlı ayarları ve önceki firmware verilerini kaldırır.
-
----
-
-## Kurulumu Doğrulama
-
-Flashlama başarıyla tamamlandıktan sonra:
-
-1. Kartı yeniden başlatmak için **EN** düğmesine bir kez basın
-2. Firmware’in beklediği baud rate ile bir seri monitör açın
-3. Kartın normal şekilde açıldığını ve başlangıç loglarını verdiğini doğrulayın
-
-### Doğrulama kontrol listesi
-
-- Kart düzgün şekilde açılıyor
-- Firmware boot loop’a girmeden başlıyor
-- Anında çökme veya reset yaşanmıyor
-- Derleme tarafından etkinleştirildiyse mesh veya Bluetooth servisleri kullanılabilir hale geliyor
-- Kart yeniden başlatmadan sonra tutarlı davranıyor
-
-> Başarılı bir flash işlemi yalnızca ESP32 firmware’inin doğru yazıldığını doğrular. MeshGrid-Node’un tam çalışması ayrıca **EBYTE E22-900T22D** ve **uyumlu bir antenin** doğru kurulmuş ve doğru bağlanmış olmasına da bağlıdır.
+> Erasing flash will remove saved configuration, pairing information, stored settings, and any previous firmware data.
 
 ---
 
-## Sorun Giderme
+## Verifying the Installation
 
-### Kart algılanmıyor
+After flashing completes successfully:
 
-Olası nedenler:
+1. Press the **EN** button once to reboot the board
+2. Open a serial monitor using the baud rate expected by the firmware
+3. Confirm that the board boots normally and outputs startup logs
 
-- Arızalı veya yalnızca güç taşıyan USB kablosu
-- Eksik CP210x veya CH340 sürücüsü
-- Bozuk USB portu
-- Kararsız USB bağlantısı
-- Kartın doğru şekilde beslenmemesi
+### Verification checklist
 
-Önerilen işlemler:
+- The board powers on correctly
+- The firmware starts without entering a boot loop
+- No immediate crash or reset occurs
+- Mesh or Bluetooth services become available if enabled by the build
+- The board behaves consistently after a reboot
 
-- Farklı bir USB kablosu deneyin
-- Başka bir USB portu deneyin
-- Doğru USB sürücüsünü kurun
-- Kartı yeniden bağlayın
-- Seri arayüz hâlâ görünmüyorsa bilgisayarı yeniden başlatın
+> A successful flash only confirms that the ESP32 firmware was written correctly. Full MeshGrid-Node operation also depends on the **EBYTE E22-900T22D** and a **compatible antenna** being installed and wired correctly.
 
 ---
 
-### macOS veya Linux’ta erişim izni hatası
+## Getting Started After Installation
 
-Mevcut kullanıcının seri cihaza erişim izni olmayabilir.
+After the firmware and hardware setup are complete:
 
-Şunları deneyin:
+1. Verify that both nodes are powered correctly and boot without error
+2. Verify that the **EBYTE E22-900T22D** module and compatible antenna are installed on each node
+3. Install the official **MeshGrid** mobile app from the **Apple App Store** or **Google Play Store**
+4. Open the official app and follow the supported MeshGrid setup flow
+5. Add or connect the nodes as supported by the application
+6. Once two supported nodes are installed and configured correctly, communication between the two nodes can be established through the official MeshGrid mobile application
 
-- Komutu yükseltilmiş yetkilerle çalıştırmak
-- Kullanıcınızı doğru seri erişim grubuna eklemek
-- İzin değişikliklerinden sonra kartı yeniden bağlamak
+> The supported user workflow is based on the official MeshGrid application. Firmware-only installation does not by itself provide the complete supported user experience.
 
 ---
 
-### esptool kartla bağlantı kuramıyor
+## Troubleshooting
 
-Şu tür hatalar görüyorsanız:
+### Board is not detected
+
+Possible causes:
+
+- Faulty or power-only USB cable
+- Missing CP210x or CH340 driver
+- Bad USB port
+- Unstable USB connection
+- Board is not powered correctly
+
+Recommended actions:
+
+- Try a different USB cable
+- Try another USB port
+- Install the correct USB driver
+- Reconnect the board
+- Reboot the computer if the serial interface remains unavailable
+
+---
+
+### Permission denied on macOS or Linux
+
+The current user may not have permission to access the serial device.
+
+Try:
+
+- Running the command with elevated permissions
+- Adding your user to the correct serial-access group
+- Reconnecting the board after permission changes
+
+---
+
+### esptool cannot connect to the board
+
+If you see errors such as:
 
 - `Failed to connect`
 - `Timed out waiting for packet header`
 
-kart büyük olasılıkla bootloader moduna girmemiştir.
+the board most likely did not enter bootloader mode.
 
-[Manuel Bootloader Modu](#manuel-bootloader-modu) bölümündeki adımları kullanın ve tekrar deneyin.
-
----
-
-### Flashlama başarılı ama kart açılmıyor
-
-Olası nedenler:
-
-- Yanlış firmware dosyası
-- Yanlış flash ofsetleri
-- Uyumsuz kart hedefi
-- Eksik veya yanlış sürüm paketi
-- Eski flash içeriğinin yeni derlemeyle çakışması
-
-Önerilen çözüm:
-
-1. Flash belleği silin
-2. Doğru komutla yeniden flashlayın
-3. Seçilen ikili dosyanın hedef karta uyduğunu doğrulayın
-4. Doğru paket düzeni ve ofsetler için sürüm sayfasını yeniden kontrol edin
+Use the steps in [Manual Bootloader Mode](#manual-bootloader-mode) and try again.
 
 ---
 
-### Firmware açılıyor ama LoRa haberleşmesi çalışmıyor
+### Flashing succeeds but the board does not boot
 
-Olası nedenler:
+Possible causes:
 
-- **EBYTE E22-900T22D** modülü eksik
-- Uyumlu anten eksik
-- LoRa modülü doğru beslenmiyor
-- ESP32 ile E22-900T22D arasındaki bağlantılar yanlış veya eksik
-- Kart ve radyo modülü beklenen MeshGrid-Node donanım düzeniyle eşleşmiyor
-- Derleme desteklenmeyen donanıma yüklenmiş
-- Firmware farklı bir pin eşlemesi veya bağlantı düzeni bekliyor
-- Kullanım bölgesi için yapılandırılmış radyo parametreleri yanlış veya mevzuata aykırı
+- Wrong firmware file
+- Wrong flash offsets
+- Incompatible board target
+- Incomplete or incorrect release package
+- Old flash contents conflicting with the new build
 
-Önerilen işlemler:
+Recommended fix:
 
-1. Düğümün **EBYTE E22-900T22D** içerdiğini doğrulayın
-2. **Uyumlu bir antenin** takılı olduğunu doğrulayın
-3. Beklenen MeshGrid-Node bağlantı düzenini yeniden kontrol edin
-4. Seçilen firmware sürümünün tam kartınız ve donanım revizyonunuz için destek verdiğini doğrulayın
-5. Radyo modülünün hedef derlemenin beklediği şekilde bağlandığını doğrulayın
-6. Yapılandırılmış radyo parametrelerinin kullanım bölgesi için uygun olduğunu doğrulayın
-7. Donanım uyumluluğu ve bilinen sınırlamalar için sürüm notlarını yeniden okuyun
+1. Erase flash
+2. Reflash using the correct command
+3. Confirm that the selected binary matches the target board
+4. Re-check the release page for the correct package layout and offsets
 
 ---
 
-### Flashlama sonrası seri çıktı yok
+### Firmware boots but LoRa communication does not work
 
-Olası nedenler:
+Possible causes:
 
-- Yanlış seri monitör baud rate değeri
-- Arızalı USB kablosu veya kararsız port
-- Firmware doğru şekilde açılmadı
-- Yanlış firmware imajı flashlandı
+- The **EBYTE E22-900T22D** module is missing
+- A compatible antenna is missing
+- The LoRa module is not powered correctly
+- The wiring between the ESP32 and E22-900T22D is wrong or incomplete
+- The board and radio module do not match the expected MeshGrid-Node hardware layout
+- The build was flashed to unsupported hardware
+- The firmware expects a different pin mapping or wiring configuration
+- The radio parameters configured for the deployment region are incorrect or non-compliant
 
-Önerilen işlemler:
+Recommended actions:
 
-- Kartı yeniden bağlayın
-- Resetlemek için **EN** düğmesine basın
-- Doğru seri portun seçili olduğunu doğrulayın
-- Gerekirse çipi sildikten sonra yeniden flashlayın
-
----
-
-## Önemli Notlar
-
-- Mevcut MeshGrid-Node firmware derlemesi; desteklenen bir ESP32 kartı, **EBYTE E22-900T22D** LoRa modülü ve **uyumlu bir anten** gerektirir
-- Yalnızca bu depoda veya resmi MeshGrid sürüm kanallarında yayımlanan resmi firmware ikili dosyalarını kullanın
-- Resmi olmayan veya değiştirilmiş ikili dosyaların flashlanması kararsızlığa, uyumsuzluğa veya beklenen işlevlerin kaybına neden olabilir
-- Kurulumdan önce firmware sürümünün donanım revizyonunuzla eşleştiğini her zaman doğrulayın
-- Tüm sürümlerin aynı ikili düzeni veya aynı flash ofsetlerini kullandığını varsaymayın
-- Sürüm notlarında açıkça belirtilmedikçe firmware’in farklı LoRa modüllerini desteklediğini varsaymayın
-- Varsayılan radyo yapılandırmasının her ülke veya bölgede yasal olduğunu varsaymayın
-- Modül **AT modu** veya başka bir yapılandırılabilir arayüz üzerinden yapılandırılıyorsa, yasal bölgesel RF ayarları **kullanıcının sorumluluğundadır**
-- Yeni bir sürümü flashlamadan önce ilgili GitHub Release notlarını okuyun
+1. Confirm that the node includes the **EBYTE E22-900T22D**
+2. Confirm that a **compatible antenna** is installed
+3. Re-check the intended MeshGrid-Node wiring
+4. Confirm that the selected firmware release supports your exact board and hardware revision
+5. Verify that the radio module is connected exactly as expected by the target build
+6. Verify that the configured radio parameters are appropriate for the deployment region
+7. Re-read the release notes for hardware compatibility and known limitations
 
 ---
 
-## Sürüm Kullanım Bildirimi
+### The mobile app cannot communicate with the node
 
-Bu depo yalnızca resmi MeshGrid-Node firmware derlemelerini ve kurulum talimatlarını dağıtmak için tasarlanmıştır.
+Possible causes:
 
-Son kullanıcılar, yayımlanan sürüm belgelerini dikkatlice izlemeli ve desteklenmeyen donanım yapılandırmalarına firmware yüklemekten kaçınmalıdır.
+- The firmware was not installed correctly
+- The hardware does not match the supported MeshGrid-Node design
+- The node wiring is incorrect
+- The LoRa module or antenna is missing
+- The user is attempting to use unsupported third-party software
+- The node setup has not been completed through the official MeshGrid app workflow
 
-Aşağıdaki sürüme özel ayrıntılar için:
+Recommended actions:
 
-- ikili dosya türü
-- flash ofsetleri
-- desteklenen kartlar
-- gerekli radyo donanımı
-- gerekli anten hususları
-- özellik kullanılabilirliği
-- bilinen sınırlamalar
-- uyumluluk notları
-
-her zaman ilgili GitHub Release sayfasına başvurun.
-
----
-
-## Beklenen Bağlantı Yapısı
-
-Mevcut firmware derlemesi, aşağıdakileri kullanan belirli bir MeshGrid-Node donanım düzeni için tasarlanmıştır:
-
-- desteklenen bir **ESP32** kartı
-- bir **EBYTE E22-900T22D** LoRa modülü
-- **uyumlu bir anten**
-
-> **Önemli:** Yalnızca firmware’i flashlamak, radyo işlevinin çalışacağını garanti etmez. ESP32, EBYTE E22-900T22D ve gerekli anten arasındaki doğru bağlantı zorunludur.
-
-Kullanıcılar şunlardan emin olmalıdır:
-
-- seçilen ESP32 kartı hedeflenen derlemeyle eşleşmelidir
-- **EBYTE E22-900T22D** düğüm üzerinde fiziksel olarak bulunmalıdır
-- modül, ilgili donanım revizyonu için beklenen bağlantı ve pin eşlemesi ile bağlanmalıdır
-- radyo modülü uygun ve kararlı bir güç kaynağıyla beslenmelidir
-- RF çalıştırmadan önce uyumlu bir anten bağlanmış olmalıdır
-- donanım tasarımının gerektirdiği yardımcı pinler, mod seçim pinleri, UART veya kontrol pinleri doğru şekilde bağlanmış olmalıdır
-
-Donanım yerleşimi, pin eşlemesi veya radyo bağlantısı hedeflenen MeshGrid-Node tasarımından farklıysa firmware:
-
-- başarıyla açılabilir ancak LoRa üzerinden haberleşemeyebilir
-- öngörülemez davranabilir
-- kararsız veya düşük RF performansı verebilir
-- amaçlandığı şekilde çalışmayabilir
-
-Gerçek donanım montajının, çalıştırmadan önce hedeflenen MeshGrid-Node bağlantı düzeniyle eşleştiğini doğrulamak kullanıcının sorumluluğundadır.
+1. Confirm that the node uses supported hardware
+2. Confirm that the firmware flash process completed successfully
+3. Confirm that the official MeshGrid app is being used
+4. Confirm that the node was added or configured according to the supported application workflow
+5. Re-check hardware, power, wiring, and firmware compatibility
 
 ---
 
-## AT Modu Yapılandırma Uyarısı
+### Serial output is missing after flashing
 
-**EBYTE E22-900T22D**, yapılandırılabilir bir radyo modülüdür. Donanım kurulumuna ve kullanım gereksinimlerine bağlı olarak modül, **AT modu** veya başka bir yapılandırma arayüzü üzerinden parametre değişikliklerini destekleyebilir.
+Possible causes:
 
-Bu yapılandırılabilir parametreler şunları içerebilir, ancak bunlarla sınırlı değildir:
+- Wrong serial monitor baud rate
+- Bad USB cable or unstable port
+- Firmware did not boot correctly
+- Wrong firmware image flashed to the board
 
-- çalışma frekansı veya kanal ayarları
-- hava veri hızı
+Recommended actions:
+
+- Reconnect the board
+- Press **EN** to reset
+- Confirm the correct serial port is selected
+- Reflash after erasing the chip if needed
+
+---
+
+## Important Notes
+
+- The current MeshGrid-Node firmware build requires a supported ESP32 board, the **EBYTE E22-900T22D** LoRa module, and a **compatible antenna**
+- This firmware is intended to communicate only with the official **MeshGrid** mobile application distributed through the **App Store** and **Google Play Store**
+- Compatibility with third-party applications, unofficial clients, or alternative software is not guaranteed
+- Only use official firmware binaries published in this repository or official MeshGrid release channels
+- Flashing unofficial or modified binaries may cause instability, incompatibility, or loss of expected functionality
+- Always verify that the firmware release matches your hardware revision before installation
+- Do not assume all releases use the same binary layout or flash offsets
+- Do not assume the firmware supports different LoRa modules unless the release notes explicitly say so
+- Do not assume any default radio configuration is legal in every country or region
+- If the module is configured through **AT mode** or any configurable interface, lawful regional RF settings are the **user's responsibility**
+- Read the corresponding GitHub Release notes before flashing any new version
+
+---
+
+## Release Usage Notice
+
+This repository is intended to distribute official MeshGrid-Node firmware builds and installation instructions only.
+
+End users should follow the published release documentation carefully and avoid flashing firmware to unsupported hardware configurations.
+
+For release-specific details such as:
+
+- binary type
+- flash offsets
+- supported boards
+- required radio hardware
+- required antenna considerations
+- mobile app compatibility scope
+- feature availability
+- known limitations
+- compatibility notes
+
+always refer to the corresponding GitHub Release page.
+
+---
+
+## Expected Wiring
+
+The current firmware build is intended for a specific MeshGrid-Node hardware layout using:
+
+- a supported **ESP32** board
+- an **EBYTE E22-900T22D** LoRa module
+- a **compatible antenna**
+
+> **Important:** Flashing the firmware alone does not guarantee functional radio operation. Correct wiring between the ESP32, the EBYTE E22-900T22D, and the required antenna is mandatory.
+
+Users must ensure that:
+
+- the selected ESP32 board matches the intended target build
+- the **EBYTE E22-900T22D** is physically present in the node
+- the module is connected using the expected wiring and pin mapping for that hardware revision
+- the radio module is supplied with an appropriate and stable power source
+- a compatible antenna is connected before RF operation
+- any auxiliary, mode-selection, UART, or control pins required by the hardware design are wired correctly
+
+If the hardware layout, pin mapping, or radio wiring differs from the intended MeshGrid-Node design, the firmware may:
+
+- boot successfully but fail to communicate over LoRa
+- behave unpredictably
+- provide unstable or degraded RF performance
+- fail to operate as intended
+
+The user is responsible for verifying that the actual hardware assembly matches the intended MeshGrid-Node wiring configuration before operation.
+
+---
+
+## AT Mode Configuration Warning
+
+The **EBYTE E22-900T22D** is a configurable radio module. Depending on the hardware setup and deployment requirements, the module may support parameter changes through **AT mode** or another configuration interface.
+
+These configurable parameters may include, but are not limited to:
+
+- operating frequency or channel settings
+- air data rate
 - UART baud rate
-- iletim gücü
-- paketle ilgili radyo parametreleri
-- bölgeye duyarlı diğer RF ayarları
+- transmit power
+- packet-related radio parameters
+- other region-sensitive RF settings
 
-> **Uyarı:** **EBYTE E22-900T22D** üzerinde **AT modu** veya başka herhangi bir yapılandırma yöntemiyle yapılan her türlü ayar, tamamen kullanıcının kendi sorumluluğundadır.
+> **Warning:** Any configuration applied to the **EBYTE E22-900T22D** through **AT mode** or any other configuration method is performed entirely at the user's own responsibility.
 
-Kullanıcı aşağıdakilerden tek başına sorumludur:
+The user is solely responsible for:
 
-- çalışılan ülke veya bölgede yasal olan ayarları seçmek
-- yapılandırılmış frekans aralıklarının, kanal planlarının, air rate değerlerinin, güç seviyesinin ve ilgili RF parametrelerinin geçerli düzenlemelere uygun olmasını sağlamak
-- seçilen antenin ve ortaya çıkan iletim karakteristiklerinin yerel yasal sınırlarla uyumlu olmasını sağlamak
-- yasadışı veya mevzuata aykırı radyo kullanımından kaçınmak
+- selecting settings that are lawful in the country or region of operation
+- ensuring that configured frequency ranges, channel plans, air rate, power level, and related RF parameters comply with applicable regulations
+- ensuring that the selected antenna and resulting transmission characteristics remain compliant with local legal limits
+- avoiding unlawful or non-compliant radio operation
 
-Firmware dağıtıcısı, depo yöneticisi ve sürüm yayımlayıcısı; kullanıcı tarafından seçilen herhangi bir modül yapılandırmasının belirli bir yargı alanı için yasal, uyumlu veya uygun olduğunu **onaylamaz, garanti etmez veya beyan etmez**.
+The firmware distributor, repository maintainer, and release publisher do **not** certify, guarantee, or represent that any user-selected module configuration is lawful, compliant, or appropriate for any particular jurisdiction.
 
-Yasal radyo ayarları konusunda herhangi bir belirsizlik varsa, yapılandırma kullanıcı tarafından ilgili bölgesel gerekliliklere göre doğrulanana kadar cihaz **iletim hizmetine alınmamalıdır**.
+If there is any uncertainty regarding lawful radio settings, the device must **not** be placed into transmission service until the configuration has been verified by the user against the applicable regional requirements.
 
 ---
 
-## Garanti Yok / Uyumluluk Feragati
+## No Warranty / Compliance Disclaimer
 
-Bu depo ve içindeki firmware sürümleri, açık veya zımni hiçbir garanti olmaksızın **“olduğu gibi”** sağlanmaktadır.
+This repository and its firmware releases are provided on an **"as is"** basis, without warranties of any kind, whether express or implied.
 
-Geçerli hukukun izin verdiği azami ölçüde:
+To the maximum extent permitted by applicable law:
 
-- belirli bir amaca uygunluk konusunda hiçbir garanti verilmez
-- kesintisiz veya hatasız çalışma konusunda hiçbir garanti verilmez
-- her donanım varyantı veya her bölgesel RF ortamıyla uyumluluk konusunda hiçbir garanti verilmez
-- belirli bir radyo yapılandırmasının, anten seçiminin veya kullanım senaryosunun yasal uygunluğu konusunda hiçbir garanti verilmez
+- no warranty is provided regarding fitness for a particular purpose
+- no warranty is provided regarding uninterrupted or error-free operation
+- no warranty is provided regarding compatibility with every hardware variant or regional RF environment
+- no warranty is provided regarding legal compliance of any specific radio configuration, antenna selection, or deployment scenario
 
-Firmware dağıtıcısı, depo yöneticisi ve sürüm yayımlayıcısı aşağıdakiler için sorumluluk kabul etmez:
+The firmware distributor, repository maintainer, and release publisher disclaim responsibility for:
 
-- hatalı donanım montajı
-- hatalı bağlantı
-- uyumsuz antenler
-- desteklenmeyen kart veya modül kombinasyonları
-- yasaya aykırı RF yapılandırması
-- mevzuat ihlalleri
-- kötü kullanım, yanlış yapılandırma veya mevzuata aykırı çalıştırmadan kaynaklanan hasar, girişim, arıza veya kayıplar
+- incorrect hardware assembly
+- incorrect wiring
+- incompatible antennas
+- unsupported board or module combinations
+- unlawful RF configuration
+- regulatory violations
+- damage, interference, malfunction, or loss resulting from misuse, misconfiguration, or non-compliant operation
 
-Bu firmware’in, **EBYTE E22-900T22D** modülünün ve ilişkili tüm RF donanımının kullanımı tamamen kullanıcının kendi riskindedir.
+Use of this firmware, the **EBYTE E22-900T22D** module, and any associated RF hardware is entirely at the user's own risk.
 
-Kullanıcılar tek başına şunlardan sorumludur:
+Users are solely responsible for:
 
-- donanım uyumluluğunu doğrulamak
-- doğru bağlantıyı ve güvenli montajı teyit etmek
-- yasal bölgesel RF parametrelerini seçmek
-- anten uygunluğunu sağlamak
-- geçerli tüm yerel, ulusal ve bölgesel yasa, düzenleme, sertifikasyon ve işletim kısıtlamalarına uymak
+- verifying hardware compatibility
+- confirming correct wiring and safe assembly
+- selecting lawful region-specific RF parameters
+- ensuring antenna suitability
+- complying with all applicable local, national, and regional laws, regulations, certifications, and operating restrictions
 
-## Lisans
+## License
 
-Bu firmware yalnızca **kişisel ve ticari olmayan kullanım** için dağıtılmaktadır.  
-[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/) lisansı ile lisanslanmıştır.
+This firmware is distributed for **personal and non-commercial use only**.  
+Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
 
-### Kısıtlamalar
+### Restrictions
 
-- ❌ Ticari yeniden dağıtım yasaktır
-- ❌ Bu firmware yüklü donanımın satılması yasaktır
-- ❌ Tersine mühendislik kesin olarak yasaktır
+- ❌ Commercial redistribution is prohibited
+- ❌ Selling hardware pre-loaded with this firmware is prohibited
+- ❌ Reverse engineering is strictly prohibited
 
-Bu firmware’i indirerek, flashlayarak, yapılandırarak veya kullanarak lisans şartlarına, dağıtım kısıtlamalarına ve geçerli tüm RF yasa ve düzenlemelerine uymayı kabul etmiş olursunuz.
+By downloading, flashing, configuring, or using this firmware, you agree to comply with the license terms, distribution restrictions, and all applicable RF laws and regulations.
 
 ---
