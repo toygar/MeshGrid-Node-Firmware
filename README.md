@@ -548,6 +548,7 @@ Recommended actions:
 ## Important Notes
 
 - The current MeshGrid-Node firmware build requires a supported ESP32 board, the **EBYTE E22-900T22D** LoRa module, and a **compatible antenna**
+- If suitable battery capacity, current delivery, voltage stability, or overall power requirements are not met, message delivery issues, transmission instability, or other communication problems may occur during operation
 - This firmware is intended to communicate only with the official **MeshGrid** mobile application distributed through the **App Store** and **Google Play Store**
 - Compatibility with third-party applications, unofficial clients, or alternative software is not guaranteed
 - Only use official firmware binaries published in this repository or official MeshGrid release channels
