@@ -11,6 +11,22 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 
 ---
 
+## Technology Overview
+
+MeshGrid-Node is built on an **ESP32 + EBYTE E22-900T22D** architecture and uses a custom **MeshLink v2** transport layer designed for low-bandwidth, encrypted sub-GHz mesh communication. On the wire, the protocol uses a **fixed 16-byte frame header** with explicit sender/target IDs, hop count, packet type, message UID, and body length fields. The current implementation supports multiple packet classes including **messages, GPS data, shapes, ACK frames, and local status events**.
+
+For security, the firmware uses a **provisioned master key stored in NVS** rather than embedded default secrets. From that master key, the system derives separate session material with **HKDF-SHA256**, splitting cryptographic usage between the BLE and LoRa paths. The **LoRa transport is protected with Ascon AEAD**, while the **BLE path uses AES-GCM**. This separation keeps the mobile-device link and the radio link isolated at the key level and allows the firmware to enforce a provisioning-first security model before mesh radio activity is enabled.
+
+On the reliability side, the protocol includes **message UIDs, RF deduplication, replay tracking, bounded retransmission logic, and ACK-based delivery confirmation for unicast traffic**. ACK frames are correlated to the original message and validated against sender/target metadata before a packet is considered delivered. The firmware also applies **retry backoff and jitter** to reduce synchronized retransmissions. Broadcast traffic is intentionally treated differently and does **not** use the same ACK guarantee model. In practical terms, this provides a controlled reliability layer, but it is **not equivalent to full collision-free or guaranteed delivery under all RF conditions**.
+
+Routing and forwarding are implemented as a lightweight **multi-hop flood/relay model** with a bounded hop limit. The node maintains **stable packet identity checks**, relay scheduling, and deferred transmission queues to prevent duplicate RF propagation from overwhelming the mesh. The firmware also includes **persistent pending-packet storage in NVS**, allowing selected outbound packets to survive reboot scenarios and be replayed after restart.
+
+For hardware integration, the design uses **UART-based communication with the E22 radio**, optional **GPS over a dedicated UART**, and a **BLE control/data bridge** for interaction with the official mobile application. The firmware also monitors module readiness through the **E22 AUX line** and uses a pseudo-busy transmit policy to reduce UART-side contention. This improves timing discipline around radio transmission, but it should be understood clearly: this is **not true RF carrier sensing or full CSMA/CA**.
+
+At the application layer, the firmware currently supports **encrypted short-form messaging, node identity, GPS position broadcasting, simple geometry objects (circle, line, square), device status signaling, and mobile-app-driven provisioning/control flows**. Persistent node identity, provisioning metadata, device naming, replay state, and selected queue data are all managed through **ESP32 NVS storage**, making the node stateful across reboots while still remaining compact enough for embedded deployment.
+
+---
+
 ## Table of Contents
 
 - [Overview](#overview)
