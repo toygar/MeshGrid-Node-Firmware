@@ -15,12 +15,14 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 
 - [Overview](#overview)
 - [Official Mobile App Compatibility](#official-mobile-app-compatibility)
+- [BLE Pairing and Access Control](#ble-pairing-and-access-control)
 - [Supported Hardware](#supported-hardware)
   - [Supported Boards](#supported-boards)
   - [Required LoRa Module](#required-lora-module)
   - [Required Antenna](#required-antenna)
 - [Radio Compliance and User Responsibility](#radio-compliance-and-user-responsibility)
 - [Release Scope](#release-scope)
+- [Current Build Characteristics](#current-build-characteristics)
 - [Firmware Installation](#firmware-installation)
   - [Requirements](#requirements)
   - [Recommended Flashing Method](#recommended-flashing-method)
@@ -28,13 +30,17 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
   - [Finding the Serial Port](#finding-the-serial-port)
   - [Flashing the Firmware](#flashing-the-firmware)
   - [Manual Bootloader Mode](#manual-bootloader-mode)
+  - [First Boot and Provisioning](#first-boot-and-provisioning)
   - [Optional: Erase Flash Before Installation](#optional-erase-flash-before-installation)
   - [Verifying the Installation](#verifying-the-installation)
 - [Getting Started After Installation](#getting-started-after-installation)
+- [Serial Diagnostics and Maintenance](#serial-diagnostics-and-maintenance)
 - [Troubleshooting](#troubleshooting)
 - [Important Notes](#important-notes)
 - [Release Usage Notice](#release-usage-notice)
 - [Expected Wiring](#expected-wiring)
+  - [Current Build Pin Map](#current-build-pin-map)
+  - [Power and Signal Notes](#power-and-signal-notes)
 - [AT Mode Configuration Warning](#at-mode-configuration-warning)
 - [No Warranty / Compliance Disclaimer](#no-warranty--compliance-disclaimer)
 - [License](#license)
@@ -82,6 +88,25 @@ Important compatibility notes:
 After completing firmware installation and hardware setup, users can install the official MeshGrid app on a supported mobile device and use it to interact with MeshGrid nodes.
 
 Once two supported nodes are installed, configured, and operating correctly, communication between two nodes can be established through the supported MeshGrid workflow in the official mobile app.
+
+
+## BLE Pairing and Access Control
+
+The current firmware build does **not** expose an open BLE transport. The BLE link is part of the supported MeshGrid workflow and is protected by pairing and link authentication.
+
+Current behavior observed in the firmware:
+
+- BLE advertising starts automatically on boot using the stored device name
+- The device uses **BLE Secure Connections with MITM protection and bonding**
+- A **6-digit static passkey** is derived from the provisioned mesh key and is required during pairing
+- If the node is not provisioned with a valid key, the mesh radio remains disabled until provisioning is completed
+- Unauthenticated BLE clients are disconnected automatically after the pairing timeout window
+
+Operational notes:
+
+- If the mesh password or provisioning state changes, previously bonded phones may need to be forgotten and paired again
+- BLE connectivity alone does not imply that LoRa transport is active; provisioning, key state, and hardware readiness still matter
+- This build is intended to be used through the official MeshGrid mobile application rather than generic BLE tools
 
 ---
 
@@ -174,6 +199,25 @@ These releases are intended for supported ESP32 boards used with the **EBYTE E22
 
 Always check the corresponding GitHub Release page for the exact binary layout, compatibility notes, offsets, and any release-specific instructions.
 
+
+## Current Build Characteristics
+
+Based on the current `.ino` implementation, the present firmware build has the following operational characteristics that are important for installation, field behavior, and expectations:
+
+- The implementation is **MeshLink v2 only**; older v1-style framing is not part of the supported wire format for this build
+- The RF/BLE outer mesh header is a **fixed 16-byte header**
+- The current application-level logical payload limit is **20 bytes** per mesh packet payload
+- The maximum mesh wire body budget is **52 bytes** and the maximum full wire size is **68 bytes**
+- LoRa encryption is enabled only when a valid provisioned key exists in NVS; otherwise the node is considered insecure or blocked depending on build policy
+- **ACK tracking is used for unicast traffic**; broadcast message ACKs are disabled in the current build
+- Relay behavior is enabled with a current **maximum hop count of 4**
+- RF duplicate suppression is enabled with a **3-second deduplication window**
+- Pending outgoing mesh packets are staged in NVS and replayed after reboot; the current staged packet limit is **5**
+- The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
+- GPS transmission logic is enabled in the build, with a default broadcast interval of **30 seconds** when compatible GPS hardware is present
+
+These items are not merely implementation details. They define practical behavior such as payload budgeting, interoperability expectations, delivery semantics, and what should or should not be assumed during deployment.
+
 ---
 
 ## Firmware Installation
@@ -194,6 +238,7 @@ This section explains how to flash the released `.bin` firmware file to a suppor
 
 - Python 3
 - `esptool`
+- A serial terminal or serial monitor capable of **115200 baud** for provisioning, verification, and diagnostics
 
 #### USB Drivers
 
@@ -255,6 +300,8 @@ Connect the ESP32 board to your computer using a **USB data cable**.
 > Some USB cables only provide power and do not support data transfer. If the board is not detected, try another cable before troubleshooting further.
 
 > **Important:** The USB cable is used to flash the ESP32. The complete MeshGrid-Node hardware is expected to include the **EBYTE E22-900T22D** module and a **compatible antenna**, connected to the ESP32 with the correct wiring required by the target build.
+
+> **Important:** The current firmware build expects the LoRa module UART to already match the firmware-side serial configuration. In the present `.ino` implementation, the radio UART is configured for **9600 baud, 8N1**. If the E22 module was previously changed to a different UART setting in AT/configuration mode, the firmware may boot normally while all LoRa communication silently fails.
 
 ---
 
@@ -366,6 +413,42 @@ This is commonly required when `esptool` cannot establish a connection with the 
 
 ---
 
+
+## First Boot and Provisioning
+
+The current firmware build is **not** purely plug-and-play after flashing. The `.ino` implementation shows that first boot behavior depends on whether a valid provisioned mesh key already exists in NVS.
+
+What happens on boot:
+
+- The USB serial console starts at **115200 baud**
+- A persistent **random 16-bit node ID** is generated on first boot and stored in NVS
+- If no device name is present, the node creates a default name in the form **`MeshGrid_XX`**
+- If a valid key is not present and provisioning is required by the build policy, the node enters a provisioning loop and the mesh radio remains disabled until provisioning succeeds
+
+### Provisioning inputs accepted over USB serial
+
+The provisioning loop accepts line-based commands over the USB serial console:
+
+- `NAME:ABC123`  
+  Sets a custom short device name
+- `ROSTER:101,102,103`  
+  Stores an allow-list / roster in NVS
+- `ROSTER:CLEAR` or `ROSTER:OFF`  
+  Disables the stored roster
+- `<password>`  
+  Any password line between **8 and 64 characters** provisions the node key material
+
+### Provisioning behavior and constraints
+
+- The password is transformed into key material and stored in NVS; nodes must use the **same password** to participate in the same private mesh
+- Custom short names are limited to **1-6 characters** and are restricted to **A-Z** and **0-9**
+- While waiting for provisioning, the onboard LED blinks repeatedly
+- After provisioning is successfully applied, the onboard LED blinks **five times quickly** as confirmation
+- If stored key metadata no longer matches the firmware policy/KDF version, the node requires reprovisioning
+
+This point is operationally critical: **a successful flash is not equivalent to a usable radio node**. Without a valid provisioned key, the current secure-mode build can remain unable to participate in the mesh.
+
+
 ## Optional: Erase Flash Before Installation
 
 If you are upgrading from an older build and encounter boot issues, corrupted settings, or unexpected behavior, erase the flash first:
@@ -412,6 +495,26 @@ After the firmware and hardware setup are complete:
 6. Once two supported nodes are installed and configured correctly, communication between the two nodes can be established through the official MeshGrid mobile application
 
 > The supported user workflow is based on the official MeshGrid application. Firmware-only installation does not by itself provide the complete supported user experience.
+
+
+## Serial Diagnostics and Maintenance
+
+The current firmware build exposes useful runtime diagnostics through the USB serial console at **115200 baud**. These commands are valuable when verifying real hardware behavior rather than guessing from the mobile side.
+
+Supported commands observed in the `.ino` implementation:
+
+- `stats` — prints runtime counters for AUX waits, relay activity, BLE auth results, ACK results, queue pressure, power profile, and radio sanity checks
+- `sched` — prints scheduler slot usage
+- `ack` — prints pending ACK tracker usage
+- `roster` — prints current roster / allow-list state
+- `roster clear` or `roster off` — disables roster filtering
+- `roster set 101,102,103` — updates the runtime roster
+- `stack` or `tasks` — prints task stack high-water marks for `LoRaTask`, `BleTask`, and `GpsTask`
+- `health` — prints a broader health snapshot including heap, stack, pending queues, and protocol counters
+- `radio` — prints LoRa UART/radio sanity information and the active UART pin mapping
+- `resetstats` — resets runtime counters without erasing protocol/NVS state
+
+These commands should be considered part of the practical support surface for this firmware, especially during bring-up, field testing, and fault isolation.
 
 ---
 
@@ -493,6 +596,8 @@ Possible causes:
 - The build was flashed to unsupported hardware
 - The firmware expects a different pin mapping or wiring configuration
 - The radio parameters configured for the deployment region are incorrect or non-compliant
+- The node was flashed successfully but **was never provisioned with a valid mesh key**
+- The E22 module UART settings do not match the firmware expectation of **9600 baud, 8N1**
 
 Recommended actions:
 
@@ -502,7 +607,9 @@ Recommended actions:
 4. Confirm that the selected firmware release supports your exact board and hardware revision
 5. Verify that the radio module is connected exactly as expected by the target build
 6. Verify that the configured radio parameters are appropriate for the deployment region
-7. Re-read the release notes for hardware compatibility and known limitations
+7. Confirm from serial logs whether the node reports provisioning/key-policy problems
+8. Confirm that the E22 UART configuration still matches the current firmware expectation
+9. Re-read the release notes for hardware compatibility and known limitations
 
 ---
 
@@ -516,6 +623,8 @@ Possible causes:
 - The LoRa module or antenna is missing
 - The user is attempting to use unsupported third-party software
 - The node setup has not been completed through the official MeshGrid app workflow
+- BLE pairing did not complete successfully
+- The phone is holding an old BLE bond after reprovisioning or device identity changes
 
 Recommended actions:
 
@@ -523,9 +632,33 @@ Recommended actions:
 2. Confirm that the firmware flash process completed successfully
 3. Confirm that the official MeshGrid app is being used
 4. Confirm that the node was added or configured according to the supported application workflow
-5. Re-check hardware, power, wiring, and firmware compatibility
+5. If pairing fails repeatedly, remove the old BLE bond from the phone and pair again
+6. Re-check hardware, power, wiring, and firmware compatibility
 
 ---
+
+
+### Device stays in provisioning mode or reports secure-mode errors
+
+Possible causes:
+
+- No valid mesh key is stored in NVS
+- Stored key metadata does not match the current firmware policy or KDF version
+- Provisioning was interrupted or incomplete
+- The serial monitor is using the wrong baud rate
+
+Typical symptoms:
+
+- Serial logs report provisioning or key-policy errors
+- The node repeatedly waits for provisioning input
+- The mesh radio never becomes operational even though flashing succeeded
+
+Recommended actions:
+
+1. Open the USB serial console at **115200 baud**
+2. Re-run provisioning with a valid password line
+3. Re-apply `NAME:` and `ROSTER:` settings if needed
+4. If the firmware was upgraded across policy changes, reprovision the node instead of assuming old key material remains valid
 
 ### Serial output is missing after flashing
 
@@ -548,7 +681,12 @@ Recommended actions:
 ## Important Notes
 
 - The current MeshGrid-Node firmware build requires a supported ESP32 board, the **EBYTE E22-900T22D** LoRa module, and a **compatible antenna**
+- The current build is **MeshLink v2 only** and should not be assumed to interoperate with older or differently framed firmware variants
 - If suitable battery capacity, current delivery, voltage stability, or overall power requirements are not met, message delivery issues, transmission instability, or other communication problems may occur during operation
+- In the current build, a valid provisioned mesh key is operationally critical; flashing alone does not guarantee an active node
+- The current firmware expects the E22 UART side to operate at **9600 baud, 8N1**
+- The current logical mesh payload limit is **20 bytes**, so application-side payload budgeting is required
+- Broadcast messaging does **not** use ACK tracking in the current build
 - This firmware is intended to communicate only with the official **MeshGrid** mobile application distributed through the **App Store** and **Google Play Store**
 - Compatibility with third-party applications, unofficial clients, or alternative software is not guaranteed
 - Only use official firmware binaries published in this repository or official MeshGrid release channels
@@ -603,6 +741,44 @@ Users must ensure that:
 - a compatible antenna is connected before RF operation
 - any auxiliary, mode-selection, UART, or control pins required by the hardware design are wired correctly
 
+### Current Build Pin Map
+
+Based on the current `.ino` implementation, the active pin map for the present build is:
+
+#### LoRa / E22 UART
+
+- **ESP32 GPIO16** ← E22 TX
+- **ESP32 GPIO17** → E22 RX
+- **ESP32 GPIO15** ← E22 AUX
+- LoRa UART setting expected by firmware: **9600 baud, 8N1**
+
+#### GPS UART
+
+- **ESP32 GPIO25** ← GPS TX (NMEA input into ESP32)
+- **ESP32 GPIO26** → GPS RX
+
+#### LEDs / local indicators
+
+- **ESP32 GPIO2** — onboard status LED
+- **ESP32 GPIO27** — RGB LED Red
+- **ESP32 GPIO32** — RGB LED Green
+- **ESP32 GPIO33** — RGB LED Blue
+
+#### Reserved outputs driven at boot by the current build
+
+- **ESP32 GPIO21** — driven LOW during setup
+- **ESP32 GPIO22** — driven LOW during setup
+
+> The source also contains an alternative compile-time LoRa UART mapping for PSRAM-related board layouts, but the current build shown in the uploaded `.ino` uses **GPIO16/GPIO17** for the LoRa UART path. Do not assume a different pin map unless the release notes explicitly say so.
+
+### Power and Signal Notes
+
+- The firmware uses the E22 **AUX** pin as a module-ready / UART-idle signal before transmit
+- AUX handling improves UART-side reliability, but it is **not** true RF carrier sensing and should not be treated as collision avoidance in the radio sense
+- The current build does **not** drive E22 **M0/M1** configuration pins; if the module requires AT/configuration changes, that must be handled outside the normal runtime path
+- GPS support is enabled in the current build, but the code can still report **no hardware** if a GPS receiver is not physically present or not producing valid NMEA data
+- The radio module and ESP32 must share a stable power source and common ground; marginal power behavior will look like software instability even when the firmware is correct
+
 If the hardware layout, pin mapping, or radio wiring differs from the intended MeshGrid-Node design, the firmware may:
 
 - boot successfully but fail to communicate over LoRa
@@ -627,6 +803,8 @@ These configurable parameters may include, but are not limited to:
 - packet-related radio parameters
 - other region-sensitive RF settings
 
+For the current firmware build, one point is especially important: the runtime code expects the E22 UART side to already match **9600 baud, 8N1**. A module configured to different UART parameters may appear powered and wired correctly while still remaining unusable to the firmware.
+
 > **Warning:** Any configuration applied to the **EBYTE E22-900T22D** through **AT mode** or any other configuration method is performed entirely at the user's own responsibility.
 
 The user is solely responsible for:
@@ -634,6 +812,7 @@ The user is solely responsible for:
 - selecting settings that are lawful in the country or region of operation
 - ensuring that configured frequency ranges, channel plans, air rate, power level, and related RF parameters comply with applicable regulations
 - ensuring that the selected antenna and resulting transmission characteristics remain compliant with local legal limits
+- keeping the module UART configuration aligned with the firmware expectation when AT/configuration changes are made
 - avoiding unlawful or non-compliant radio operation
 
 The firmware distributor, repository maintainer, and release publisher do **not** certify, guarantee, or represent that any user-selected module configuration is lawful, compliant, or appropriate for any particular jurisdiction.
