@@ -1,9 +1,24 @@
 # MeshGrid-Node-Firmware
 
+![Firmware Distribution](https://img.shields.io/badge/Firmware-Distribution-1f6feb)
+![ESP32](https://img.shields.io/badge/Target-ESP32-0f766e)
+![LoRa](https://img.shields.io/badge/Radio-EBYTE%20E22--900T22D-7c3aed)
+![Protocol](https://img.shields.io/badge/Protocol-MeshLink%20v2-2563eb)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-111827)
+
 Official firmware distribution and installation guide for **MeshGrid-Node**.  
 This repository provides official firmware releases and flashing instructions for supported ESP32-based boards **and the required LoRa radio hardware** used in the MeshGrid ecosystem.
 
 MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication** and support **offline coordination and tactical mapping workflows** for small teams and field-oriented use cases.
+
+## At a Glance
+
+- **Platform:** ESP32-S / ESP32 DevKit V1
+- **Radio:** EBYTE E22-900T22D + compatible antenna
+- **Transport:** MeshLink v2 over encrypted sub-GHz LoRa
+- **Security:** Provisioned keys, HKDF-SHA256, Ascon AEAD, AES-GCM
+- **Companion App:** Official MeshGrid mobile application only
+- **Distribution Model:** Prebuilt firmware releases with flashing guidance
 
 > **Important:** The current firmware build is intended to run on supported ESP32 boards **together with the EBYTE E22-900T22D LoRa module and a compatible antenna**. The LoRa radio and antenna are required hardware components for MeshGrid-Node operation and are not optional.
 
@@ -13,6 +28,7 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 
 ## Table of Contents
 
+- [At a Glance](#at-a-glance)
 - [Overview](#overview)
 - [Technology Overview](#technology-overview)
 - [Official Mobile App Compatibility](#official-mobile-app-compatibility)
