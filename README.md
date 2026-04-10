@@ -57,16 +57,18 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 - [Release Usage Notice](#release-usage-notice)
 - [Expected Wiring](#expected-wiring)
   - [Current Build Pin Map](#current-build-pin-map)
+  - [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
   - [Power and Signal Notes](#power-and-signal-notes)
 - [AT Mode Configuration Warning](#at-mode-configuration-warning)
 - [No Warranty / Compliance Disclaimer](#no-warranty--compliance-disclaimer)
 - [License](#license)
+- [Security Policy](SECURITY.md)
 
 ---
 
 ## Overview
 
-MeshGrid-Node-Firmware is the official firmware distribution repository for MeshGrid-compatible nodes.
+This repository (**MeshGrid-Node-Firmware**) is the official distribution channel for **MeshGrid-Node** firmware binaries and related installation documentation.
 
 The firmware is intended to provide a lightweight, encrypted LoRa mesh communication layer for offline operation in constrained environments. The primary focus is practical field deployment on supported ESP32 hardware using prebuilt firmware binaries distributed through GitHub Releases.
 
@@ -76,6 +78,8 @@ This repository is intended for:
 - Firmware installation instructions
 - Release-specific binary information
 - End-user flashing guidance for supported hardware
+
+**Security vulnerabilities:** Use the process in **[`SECURITY.md`](SECURITY.md)** (including the security contact given there). Public GitHub Issues are **not** the correct channel for the **initial** report of a suspected vulnerability.
 
 > MeshGrid-Node is **not an ESP32-only firmware target**. The firmware is built for a node configuration that includes a supported ESP32 board, the **EBYTE E22-900T22D** LoRa radio module, and a **compatible antenna**.
 
@@ -93,7 +97,7 @@ On the reliability side, the protocol includes **message UIDs, RF deduplication,
 
 Routing and forwarding are implemented as a lightweight **multi-hop flood/relay model** with a bounded hop limit. The node maintains **stable packet identity checks**, relay scheduling, and deferred transmission queues to prevent duplicate RF propagation from overwhelming the mesh. The firmware also includes **persistent pending-packet storage in NVS**, allowing selected outbound packets to survive reboot scenarios and be replayed after restart.
 
-For hardware integration, the design uses **UART-based communication with the E22 radio**, optional **GPS over a dedicated UART**, and a **BLE control/data bridge** for interaction with the official mobile application. The firmware also monitors module readiness through the **E22 AUX line** and uses a pseudo-busy transmit policy to reduce UART-side contention. This improves timing discipline around radio transmission, but it should be understood clearly: this is **not true RF carrier sensing or full CSMA/CA**.
+For hardware integration, the design uses **UART-based communication with the E22 radio**, optional **GPS over a dedicated UART**, optional **battery voltage sense on a divided ADC input (GPIO34)** for mobile-reported charge level, and a **BLE control/data bridge** for interaction with the official mobile application. The firmware also monitors module readiness through the **E22 AUX line** and uses a pseudo-busy transmit policy to reduce UART-side contention. This improves timing discipline around radio transmission, but it should be understood clearly: this is **not true RF carrier sensing or full CSMA/CA**.
 
 At the application layer, the firmware currently supports **encrypted short-form messaging, node identity, GPS position broadcasting, simple geometry objects (circle, line, square), device status signaling, and mobile-app-driven provisioning/control flows**. Persistent node identity, provisioning metadata, device naming, replay state, and selected queue data are all managed through **ESP32 NVS storage**, making the node stateful across reboots while still remaining compact enough for embedded deployment.
 
@@ -108,10 +112,10 @@ Supported client distribution channels:
 - **Apple App Store** — official MeshGrid iOS application
 - **Google Play Store** — official MeshGrid Android application
 
-Official store links will be published here when available:
+Official store links will be added here when the applications are publicly listed:
 
-- **App Store:** `<ADD_APP_STORE_LINK_HERE>`
-- **Google Play:** `<ADD_GOOGLE_PLAY_LINK_HERE>`
+- **App Store:** *To be announced*
+- **Google Play:** *To be announced*
 
 Important compatibility notes:
 
@@ -251,6 +255,7 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - Pending outgoing mesh packets are staged in NVS and replayed after reboot; the current staged packet limit is **5**
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
 - GPS transmission logic is enabled in the build, with a default broadcast interval of **30 seconds** when compatible GPS hardware is present
+- **Battery monitoring** (when wired as documented): the node samples cell voltage on **GPIO34** through a **10kΩ + 10kΩ** divider, applies smoothing and stabilization in firmware, and sends **BLE status telemetry** to the official app about every **10 seconds** while connected — see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
 
 These items are not merely implementation details. They define practical behavior such as payload budgeting, interoperability expectations, delivery semantics, and what should or should not be assumed during deployment.
 
@@ -721,6 +726,7 @@ Recommended actions:
 - The current MeshGrid-Node firmware build requires a supported ESP32 board, the **EBYTE E22-900T22D** LoRa module, and a **compatible antenna**
 - The current build is **MeshLink v2 only** and should not be assumed to interoperate with older or differently framed firmware variants
 - If suitable battery capacity, current delivery, voltage stability, or overall power requirements are not met, message delivery issues, transmission instability, or other communication problems may occur during operation
+- Battery **percentage** in the app is derived from **voltage** (with firmware smoothing), not coulomb counting; recalibrate or adjust hardware if readings disagree persistently with a multimeter — see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
 - In the current build, a valid provisioned mesh key is operationally critical; flashing alone does not guarantee an active node
 - The current firmware expects the E22 UART side to operate at **9600 baud, 8N1**
 - The current logical mesh payload limit is **20 bytes**, so application-side payload budgeting is required
@@ -735,6 +741,7 @@ Recommended actions:
 - Do not assume any default radio configuration is legal in every country or region
 - If the module is configured through **AT mode** or any configurable interface, lawful regional RF settings are the **user's responsibility**
 - Read the corresponding GitHub Release notes before flashing any new version
+- Report **security vulnerabilities** only through the process in **[`SECURITY.md`](SECURITY.md)**
 
 ---
 
@@ -757,6 +764,8 @@ For release-specific details such as:
 - compatibility notes
 
 always refer to the corresponding GitHub Release page.
+
+For **security vulnerability reporting**, use **[`SECURITY.md`](SECURITY.md)**.
 
 ---
 
@@ -802,12 +811,48 @@ Based on the current `.ino` implementation, the active pin map for the present b
 - **ESP32 GPIO32** — RGB LED Green
 - **ESP32 GPIO33** — RGB LED Blue
 
+#### Battery voltage sense (ADC)
+
+- **ESP32 GPIO34** — **ADC1** input for **cell voltage** (read-only GPIO; must not exceed **~3.3 V** at the pin)
+- Expected analog front-end: **two equal resistors** (typically **10 kΩ + 10 kΩ**) from **cell (+)** to **GND**, with the **midpoint** to GPIO34 — i.e. **Vpin ≈ Vcell / 2**. Firmware reconstructs **Vcell = Vpin × 2** (see source: `BATTERY_DIVIDER_RATIO_X100`).
+- **Safety:** A fully charged **18650** can reach **~4.2 V**; the divider must keep the voltage at GPIO34 within the ESP32 ADC valid range (about **≤3.3 V**; with 10k/10k, **~2.1 V** max at the pin for a 4.2 V cell). **Never** connect the cell directly to a GPIO.
+
 #### Reserved outputs driven at boot by the current build
 
 - **ESP32 GPIO21** — driven LOW during setup
 - **ESP32 GPIO22** — driven LOW during setup
 
 > The source also contains an alternative compile-time LoRa UART mapping for PSRAM-related board layouts, but the current build shown in the uploaded `.ino` uses **GPIO16/GPIO17** for the LoRa UART path. Do not assume a different pin map unless the release notes explicitly say so.
+
+### Battery Voltage Sense and App Reporting
+
+When `ENABLE_BATTERY_MONITOR` is enabled in firmware (default in current sources), the node reports **remaining charge** as a **voltage-derived percentage** (a practical proxy, not a coulomb-counting fuel gauge).
+
+**Hardware**
+
+- **Divider:** 10 kΩ / 10 kΩ from cell (+) to GND, midpoint to **GPIO34**; **common ground** between the cell negative, ESP32 GND, and USB return path where applicable.
+
+**Mapping (firmware)**
+
+- Linear range: **3.35 V cell → 0% display**, **4.20 V cell → 100%** (`BATTERY_CELL_MV_EMPTY` / `BATTERY_CELL_MV_FULL`).
+- **Calibration:** ESP32 ADC plus divider tolerance can read **tens to ~150 mV low** versus a multimeter on the cell. Firmware exposes **`BATTERY_ADC_CALIBRATION_OFFSET_MV`** (millivolts added to the reconstructed cell voltage before display/telemetry; default in recent builds is **+130 mV** — tune per board if needed).
+- **Telemetry interval:** about **10 s** between local battery status notifications while BLE is connected and authenticated (`BLE_LOCAL_BATTERY_STATUS_INTERVAL_MS`).
+
+**Stability behavior (recent factory builds, e.g. `factory_v0.0.3` / BUILD 87)**
+
+- **EMA** smoothing on cell millivolts to reduce ADC noise between intervals.
+- **Single-step** percentage changes use a **millivolt hysteresis band** so small noise does not constantly tick the value.
+- **Spike limiting:** raw sample vs previous EMA clamped by **`BATTERY_MAX_DELTA_MV_PER_SAMPLE`** (e.g. **±35 mV** per interval) to reject single bad ADC reads.
+- **Warmup reads** before the first sample after link-up to reduce an optimistic first reading.
+- **Displayed % does not increase** during a BLE session when only “recovery” from load sag occurs (no charge-detection pin in this design); the official app should use the **stabilized percentage** from the status packet.
+
+**Wire protocol to the mobile app**
+
+- `MESH_TYPE_STATUS`, local-node packet type **`0xFE`**, event **`0x43`** (`MESH_STATUS_EVENT_NODE_BATTERY`).
+- **`detail`:** 0–100 (stabilized %).
+- **`auxValue`:** cell voltage in **millivolts** (EMA; matches the same curve as `detail`).
+
+Serial boot logs include **`BUILD=`** with the embedded **BUILD** number; match this to the GitHub Release asset you flashed.
 
 ### Power and Signal Notes
 
@@ -816,6 +861,8 @@ Based on the current `.ino` implementation, the active pin map for the present b
 - The current build does **not** drive E22 **M0/M1** configuration pins; if the module requires AT/configuration changes, that must be handled outside the normal runtime path
 - GPS support is enabled in the current build, but the code can still report **no hardware** if a GPS receiver is not physically present or not producing valid NMEA data
 - The radio module and ESP32 must share a stable power source and common ground; marginal power behavior will look like software instability even when the firmware is correct
+- If a **battery** is used, verify divider wiring and **never** exceed the ESP32 ADC input limits on **GPIO34**; compare multimeter cell voltage to `auxValue` (mV) in the app if calibration seems off
+- USB-only bench power without a cell may show **0%** or noisy ADC readings on **GPIO34** — that is expected if the sense node is floating or tied only to USB-derived rails
 
 If the hardware layout, pin mapping, or radio wiring differs from the intended MeshGrid-Node design, the firmware may:
 
@@ -892,15 +939,20 @@ Users are solely responsible for:
 
 ## License
 
-This firmware is distributed for **personal and non-commercial use only**.  
-Licensed under [CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/).
+Official **binary** releases published in this repository are offered under **[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)** for **non-commercial** sharing of **unmodified** builds, with attribution. The full notice, including reserved rights of the copyright holder, is in **[`LICENSE`](LICENSE)**.
 
-### Restrictions
+The copyright holder **retains all rights not granted** under that public license, including **commercial sale** of firmware or pre-flashed devices, **separate commercial or OEM agreements**, and **authorized distribution** channels.
 
-- ❌ Commercial redistribution is prohibited
-- ❌ Selling hardware pre-loaded with this firmware is prohibited
-- ❌ Reverse engineering is strictly prohibited
+### Third-party restrictions (unless separately licensed in writing)
 
-By downloading, flashing, configuring, or using this firmware, you agree to comply with the license terms, distribution restrictions, and all applicable RF laws and regulations.
+- **Commercial** redistribution or resale of firmware binaries, or of hardware pre-loaded with them, **without authorization**.
+- **Modified** firmware builds: creation or distribution of derivative works is not permitted under CC **NoDerivatives** for licensees.
+- **Reverse engineering** or attempted extraction of **source code** where prohibited by applicable law or by contract.
+
+**Client software:** Use with the **official MeshGrid mobile application** and supported ecosystem only, as described in this document. Third-party or unofficial clients are not supported.
+
+By downloading, flashing, configuring, or using this firmware, you agree to comply with **[`LICENSE`](LICENSE)**, any **purchase or enterprise terms** that apply to how you obtained the software, and all applicable RF laws and regulations.
+
+**CC BY-NC-ND and redistribution:** Non-commercial recipients may still **share unmodified copies** of published binaries (with attribution). If your product requires **no third-party redistribution** at all, you will typically need a **proprietary license or EULA** in addition to or instead of the public CC terms — contact the copyright holder for commercial licensing.
 
 ---

@@ -1,16 +1,34 @@
-MeshGrid-Node Firmware License (CC BY-NC-ND 4.0)
+MeshGrid-Node Firmware — License Notice
 
-Copyright (c) 2026 MeshGrid & MeshGrid Node - orbitsensors.com
+Copyright (c) 2026 MeshGrid / MeshGrid Node (orbitsensors.com). All rights reserved except as stated below.
 
-This firmware is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International License. 
+## Rights of the copyright holder
 
-YOU ARE PERMITTED TO:
-* Share: Copy and redistribute the material in any medium or format.
+All rights not expressly granted below are reserved. The copyright holder may, at its sole discretion, **sell** firmware (including pre-flashed devices), grant **commercial licenses**, authorize **OEM/partner** distribution, and define **separate end-user or enterprise agreements**. Nothing in the public terms below limits those rights.
 
-UNDER THE FOLLOWING TERMS:
-* Attribution: You must give appropriate credit and provide a link to the license.
-* Non-Commercial: You may not use the material for commercial purposes.
-* No-Derivatives: If you remix, transform, or build upon the material, you may not distribute the modified material.
-* No Additional Restrictions: You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+## Public license for distributed firmware (CC BY-NC-ND 4.0)
 
-Full license text can be found at: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
+Official **binary** releases of this firmware that the copyright holder makes available (for example via GitHub Releases) are licensed to **you** under the **Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International** license, **only** for the files and versions explicitly published under that license.
+
+Under CC BY-NC-ND 4.0, for **those** materials:
+
+**You are permitted to**
+- **Share** — copy and redistribute the material in any medium or format, **under the following terms**:
+
+**Under the following terms**
+- **Attribution** — You must give appropriate credit and provide a link to the license.
+- **NonCommercial** — You may not use the material for commercial purposes (this applies to **you** as licensee, not to the copyright holder).
+- **NoDerivatives** — If you remix, transform, or build upon the material, you may not distribute the modified material.
+- **No additional restrictions** — You may not apply legal terms or technological measures that legally restrict others from doing anything the license permits.
+
+Full license text: https://creativecommons.org/licenses/by-nc-nd/4.0/legalcode
+
+## Use with software
+
+Use of this firmware **only with the official MeshGrid mobile application** (or other channels **expressly authorized in writing** by the copyright holder) is the supported model. **Restrictions in your jurisdiction, your purchase agreement, or a separate EULA** may impose additional limits (for example on reverse engineering or redistribution). If those terms conflict with the public CC terms for a given release, follow the **stricter** or **more specific** terms that apply to how you obtained the firmware.
+
+## Disclaimer
+
+This notice summarizes how binaries are offered and is not a substitute for legal counsel. For commercial licensing, OEM distribution, integration, or volume terms, contact the copyright holder using the contact points published for this project (including **[info@meshgrid.org](mailto:info@meshgrid.org)** for general inquiries where applicable).
+
+**Security:** Report suspected security vulnerabilities as described in **`SECURITY.md`** in this repository. Do **not** use public GitHub Issues for the **initial** disclosure of security-sensitive findings; use the security contact given in `SECURITY.md`.
