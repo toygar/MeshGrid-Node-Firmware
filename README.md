@@ -1,3 +1,7 @@
+<p align="center">
+  <a href="https://meshgrid.org"><img src="docs/meshgrid-logo.png" alt="MeshGrid" width="200"></a>
+</p>
+
 # MeshGrid-Node-Firmware
 
 ![Firmware Distribution](https://img.shields.io/badge/Firmware-Distribution-1f6feb)
