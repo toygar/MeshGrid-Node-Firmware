@@ -2,11 +2,16 @@
   <a href="https://meshgrid.org"><img src="docs/meshgrid-logo.png" alt="MeshGrid" width="240" height="240"></a>
 </p>
 
-# MeshGrid-Node-Firmware
-
 ## MeshGrid Node
 
-*Coordinate your team when the network fails.*
+![Firmware Distribution](https://img.shields.io/badge/Firmware-Distribution-1f6feb)
+![ESP32](https://img.shields.io/badge/Target-ESP32-0f766e)
+![LoRa](https://img.shields.io/badge/Radio-EBYTE%20E22--900T22D-7c3aed)
+![Protocol](https://img.shields.io/badge/Protocol-MeshLink%20v2-2563eb)
+![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-111827)
+
+**Tactical Mesh Networking & Coordination Infrastructure**  
+Coordinate your team when the network fails.
 
 ### The problem
 
@@ -40,12 +45,6 @@ MeshGrid combines two pillars:
 Together they form a **self-contained coordination layer** for teams working **without** traditional connectivity.
 
 ---
-
-![Firmware Distribution](https://img.shields.io/badge/Firmware-Distribution-1f6feb)
-![ESP32](https://img.shields.io/badge/Target-ESP32-0f766e)
-![LoRa](https://img.shields.io/badge/Radio-EBYTE%20E22--900T22D-7c3aed)
-![Protocol](https://img.shields.io/badge/Protocol-MeshLink%20v2-2563eb)
-![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-111827)
 
 **This repository** is the **official distribution channel** for **MeshGrid-Node** firmware binaries, flashing instructions, and published hardware references (**[HARDWARE_PINOUT.html](HARDWARE_PINOUT.html)**, **[HARDWARE_SCHEMATIC.svg](HARDWARE_SCHEMATIC.svg)**). **Project website:** [https://meshgrid.org](https://meshgrid.org)
 
