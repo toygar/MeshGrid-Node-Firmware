@@ -4,18 +4,52 @@
 
 # MeshGrid-Node-Firmware
 
+## MeshGrid Node
+
+*Coordinate your team when the network fails.*
+
+### The problem
+
+In field operations, connectivity is often **unreliable or absent**. Typical approaches stitch together **disconnected tools**—mapping software, mesh stacks, and device configuration—each from a different mindset. That creates **setup overhead**, **fragmented workflows**, and **delays** exactly when time matters most.
+
+### The solution
+
+**MeshGrid** is a **field-ready coordination system** built on **LoRa mesh** networking. It replaces complex, multi-vendor setups with **one coherent stack** focused on **immediate usability** rather than integration projects.
+
+### What teams can do
+
+- **Share a common offline map** for situational awareness.
+- **Track team members** with timely position updates on the mesh.
+- **Communicate over long range** with **no cellular or internet** infrastructure required.
+
+### Why MeshGrid is different
+
+- **Streamlined setup:** Fewer steps and less brittle configuration—get running in **seconds**, not a long integration cycle.
+- **Integrated workflow:** Mapping, positioning, and messaging are **designed to work together**, not bolted on after the fact.
+- **Operations-first:** Built for **team awareness** in the field—not generic chat as the primary metaphor.
+- **Firmware built for stability:** The node runtime is tuned for **low resource use** and **predictable concurrent behavior** on embedded hardware.
+- **Unified experience:** A **mobile interface** aligned with the **node hardware** for real-world use.
+
+### System overview
+
+MeshGrid combines two pillars:
+
+1. **ESP32-based LoRa nodes** — Low-power, long-range **mesh** links between devices, with asynchronous task handling for **continuous** data flow.
+2. **Official mobile app** — Connects to nodes over **Bluetooth** to manage mapping, precise positioning, and **team coordination** tools.
+
+Together they form a **self-contained coordination layer** for teams working **without** traditional connectivity.
+
+---
+
 ![Firmware Distribution](https://img.shields.io/badge/Firmware-Distribution-1f6feb)
 ![ESP32](https://img.shields.io/badge/Target-ESP32-0f766e)
 ![LoRa](https://img.shields.io/badge/Radio-EBYTE%20E22--900T22D-7c3aed)
 ![Protocol](https://img.shields.io/badge/Protocol-MeshLink%20v2-2563eb)
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-111827)
 
-Official firmware distribution and installation guide for **MeshGrid-Node**.  
-**Project website:** [https://meshgrid.org](https://meshgrid.org)
+**This repository** is the **official distribution channel** for **MeshGrid-Node** firmware binaries, flashing instructions, and published hardware references (**[HARDWARE_PINOUT.html](HARDWARE_PINOUT.html)**, **[HARDWARE_SCHEMATIC.svg](HARDWARE_SCHEMATIC.svg)**). **Project website:** [https://meshgrid.org](https://meshgrid.org)
 
-This repository provides official firmware releases and flashing instructions for supported ESP32-based boards **and the required LoRa radio hardware** used in the MeshGrid ecosystem.
-
-MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication** and support **offline coordination and tactical mapping workflows** for small teams and field-oriented use cases.
+MeshGrid-Node enables **encrypted sub-GHz LoRa mesh** communication and **offline coordination and tactical mapping** workflows for small teams and field-oriented use cases.
 
 Communication between nodes and the official app uses **MeshLink v2**, a **MeshGrid-specific** protocol (see [About MeshLink v2](#about-meshlink-v2)). It is **not** a generic industry-wide radio standard like LoRaWAN; it defines how encrypted mesh payloads, identities, and delivery semantics are framed for this product.
 
@@ -38,6 +72,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
 
 ## Table of Contents
 
+- [MeshGrid Node](#meshgrid-node)
 - [At a Glance](#at-a-glance)
 - [Overview](#overview)
   - [Hardware documentation (pinout and schematic)](#hardware-documentation-pinout-and-schematic)
