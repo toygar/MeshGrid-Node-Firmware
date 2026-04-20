@@ -1,5 +1,5 @@
 <p align="center">
-  <a href="https://meshgrid.org"><img src="docs/meshgrid-logo.png" alt="MeshGrid" width="200"></a>
+  <a href="https://meshgrid.org"><img src="docs/meshgrid-logo.png" alt="MeshGrid" width="240" height="240"></a>
 </p>
 
 # MeshGrid-Node-Firmware
