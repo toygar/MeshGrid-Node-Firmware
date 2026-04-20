@@ -7,18 +7,24 @@
 ![License](https://img.shields.io/badge/License-CC%20BY--NC--ND%204.0-111827)
 
 Official firmware distribution and installation guide for **MeshGrid-Node**.  
+**Project website:** [https://meshgrid.org](https://meshgrid.org)
+
 This repository provides official firmware releases and flashing instructions for supported ESP32-based boards **and the required LoRa radio hardware** used in the MeshGrid ecosystem.
 
 MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication** and support **offline coordination and tactical mapping workflows** for small teams and field-oriented use cases.
+
+Communication between nodes and the official app uses **MeshLink v2**, a **MeshGrid-specific** protocol (see [About MeshLink v2](#about-meshlink-v2)). It is **not** a generic industry-wide radio standard like LoRaWAN; it defines how encrypted mesh payloads, identities, and delivery semantics are framed for this product.
 
 ## At a Glance
 
 - **Platform:** ESP32-S / ESP32 DevKit V1
 - **Radio:** EBYTE E22-900T22D + compatible antenna
-- **Transport:** MeshLink v2 over encrypted sub-GHz LoRa
-- **Security:** Provisioned keys, HKDF-SHA256, Ascon AEAD, AES-GCM
+- **Transport:** **MeshLink v2** — MeshGrid’s own sub-GHz mesh framing (encrypted LoRa + BLE companion path); see [About MeshLink v2](#about-meshlink-v2)
+- **Security:** Password-derived master key (PBKDF2-HMAC-SHA256), HKDF-SHA256 subkeys, Ascon AEAD (LoRa), AES-GCM (BLE)
 - **Companion App:** Official MeshGrid mobile application only
 - **Distribution Model:** Prebuilt firmware releases with flashing guidance
+- **Official website:** [meshgrid.org](https://meshgrid.org)
+- **Hardware docs (this repo):** [`HARDWARE_PINOUT.html`](HARDWARE_PINOUT.html) · [`HARDWARE_SCHEMATIC.svg`](HARDWARE_SCHEMATIC.svg) (English) — published here so installers do not need a private source repo; see [Hardware documentation](#hardware-documentation-pinout-and-schematic)
 
 > **Important:** The current firmware build is intended to run on supported ESP32 boards **together with the EBYTE E22-900T22D LoRa module and a compatible antenna**. The LoRa radio and antenna are required hardware components for MeshGrid-Node operation and are not optional.
 
@@ -30,7 +36,17 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 
 - [At a Glance](#at-a-glance)
 - [Overview](#overview)
+  - [Hardware documentation (pinout and schematic)](#hardware-documentation-pinout-and-schematic)
+  - [Firmware source code](#firmware-source-code)
+  - [Building from source](#building-from-source)
 - [Technology Overview](#technology-overview)
+  - [About MeshLink v2](#about-meshlink-v2)
+  - [MeshLink v2 wire layout](#meshlink-v2-wire-layout)
+  - [Packet types and addressing](#packet-types-and-addressing)
+  - [Cryptographic derivations](#cryptographic-derivations)
+  - [BLE GATT profile](#ble-gatt-profile)
+  - [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits)
+  - [Security model limitations](#security-model-limitations)
 - [Official Mobile App Compatibility](#official-mobile-app-compatibility)
 - [BLE Pairing and Access Control](#ble-pairing-and-access-control)
 - [Supported Hardware](#supported-hardware)
@@ -68,7 +84,7 @@ MeshGrid-Node is designed to enable **encrypted sub-GHz LoRa mesh communication*
 
 ## Overview
 
-This repository (**MeshGrid-Node-Firmware**) is the official distribution channel for **MeshGrid-Node** firmware binaries and related installation documentation.
+This repository (**MeshGrid-Node-Firmware**) is the official distribution channel for **MeshGrid-Node** firmware binaries and related installation documentation. General product information is available at **[https://meshgrid.org](https://meshgrid.org)**.
 
 The firmware is intended to provide a lightweight, encrypted LoRa mesh communication layer for offline operation in constrained environments. The primary focus is practical field deployment on supported ESP32 hardware using prebuilt firmware binaries distributed through GitHub Releases.
 
@@ -83,15 +99,40 @@ This repository is intended for:
 
 > MeshGrid-Node is **not an ESP32-only firmware target**. The firmware is built for a node configuration that includes a supported ESP32 board, the **EBYTE E22-900T22D** LoRa radio module, and a **compatible antenna**.
 
+### Hardware documentation (pinout and schematic)
+
+**This repository is the canonical, public place for wiring documentation.** Because **MeshGrid-Node-Firmware** is what you ship to users (and the firmware source tree may stay private), pinout and connection diagrams are kept **here**, next to the README and releases — not only inside an unpublished source repo.
+
+| File | Purpose |
+|------|---------|
+| **[`HARDWARE_PINOUT.html`](HARDWARE_PINOUT.html)** | GPIO tables, UART speeds (USB / LoRa / GPS), E22 and GPS wiring summary, **10 kΩ + 10 kΩ** battery divider for **GPIO34**, BLE UUIDs, text wiring list. Open in any browser; suitable for print/PDF. |
+| **[`HARDWARE_SCHEMATIC.svg`](HARDWARE_SCHEMATIC.svg)** | Block diagram: ESP32, **E22-900T22D**, GPS, cell + divider to **GPIO34**. Open in a browser or vector tool; printable. |
+
+These files are **reference breadboard/wiring aids** (no official PCB). Always match the **pin map** to the firmware build you flashed ([Expected Wiring](#expected-wiring) in this README repeats the same defaults).
+
+### Firmware source code
+
+The Arduino / **firmware source** (`.ino` sketch, crypto, `provision.py`, `partitions.csv`, PlatformIO layout) is **not** published in **this** repository. This repo is intended for **released `.bin` files**, installation, compliance text, and the **hardware documents above**. If you maintain a separate private source tree, keep it in sync with what you ship.
+
+### Building from source
+
+Compiling firmware yourself requires that **internal source tree** (e.g. PlatformIO or Arduino IDE, partition scheme ~**1.9 MB** app on **4 MB** flash, provisioning tooling). That workflow is **out of scope** for this public README. **End users** flashing official binaries only need the **Releases** page of **this** repository and the **flash offsets** published with each build.
+
 ---
 
 ## Technology Overview
 
 This section summarizes the architecture and protocol model used by the current firmware. Numeric build-specific limits are documented later in [Current Build Characteristics](#current-build-characteristics).
 
-MeshGrid-Node is built on an **ESP32 + EBYTE E22-900T22D** architecture and uses a custom **MeshLink v2** transport layer designed for low-bandwidth, encrypted sub-GHz mesh communication. On the wire, the protocol uses a **fixed 16-byte frame header** with explicit sender/target IDs, hop count, packet type, message UID, and body length fields. The current implementation supports multiple packet classes including **messages, GPS data, shapes, ACK frames, and local status events**.
+### About MeshLink v2
 
-For security, the firmware uses a **provisioned master key stored in NVS** rather than embedded default secrets. From that master key, the system derives separate session material with **HKDF-SHA256**, splitting cryptographic usage between the BLE and LoRa paths. The **LoRa transport is protected with Ascon AEAD**, while the **BLE path uses AES-GCM**. This separation keeps the mobile-device link and the radio link isolated at the key level and allows the firmware to enforce a provisioning-first security model before mesh radio activity is enabled.
+**MeshLink v2** is the **application-level mesh protocol** created **for the MeshGrid project** — it coordinates **MeshGrid-Node** firmware, the **EBYTE E22-900T22D** UART link, and the **official MeshGrid mobile application**. The specification (framing, packet types, security bindings, and delivery rules) is **defined and evolved inside the MeshGrid ecosystem**; it is **not** an independent IETF/IEEE/Bluetooth SIG standard, and it is **not** the same thing as **LoRaWAN** or other vendor-agnostic stacks. Third-party devices or apps should be assumed **incompatible** unless explicitly documented otherwise.
+
+**What “v2” means:** the current generation uses a single **binary wire format** with a **fixed 16-byte header** and a strict **header + body** layout (documented under [MeshLink v2 wire layout](#meshlink-v2-wire-layout)). Earlier **v1**-style framing is **not** supported by this firmware; only **MeshLink v2** peers with aligned firmware/app versions are expected to interoperate.
+
+MeshGrid-Node is built on an **ESP32 + EBYTE E22-900T22D** architecture and implements **MeshLink v2** as its transport for low-bandwidth, encrypted sub-GHz mesh communication. On the wire, the protocol uses that **fixed 16-byte frame header** with explicit sender/target IDs, hop count, packet type, message UID, and body length fields. The current implementation supports multiple packet classes including **messages, GPS data, shapes (including visibility/style updates), ACK frames, alerts, and local status events** (plus BLE-local control flows).
+
+For security, provisioning collects a **user password** (see [First Boot and Provisioning](#first-boot-and-provisioning)); the firmware derives a **16-byte master key** with **PBKDF2-HMAC-SHA256** using salt **`MeshGrid/PasswordKdf/v1`** and **120,000** iterations (values fixed in firmware; may change if `PROV_KDF_VERSION` is bumped) and stores that master key in **NVS** — there are no embedded default mesh secrets. From the master key, the system derives separate material with **HKDF-SHA256**: a **BLE subkey** and a **LoRa subkey**, splitting cryptographic usage between the two transports. Per-packet LoRa keys may be derived from the LoRa subkey for Ascon. The **LoRa transport is protected with Ascon AEAD**, while the **BLE path uses AES-GCM** with the BLE-derived keys. This separation keeps the mobile-device link and the radio link isolated at the key level and allows the firmware to enforce a provisioning-first security model before mesh radio activity is enabled.
 
 On the reliability side, the protocol includes **message UIDs, RF deduplication, replay tracking, bounded retransmission logic, and ACK-based delivery confirmation for unicast traffic**. ACK frames are correlated to the original message and validated against sender/target metadata before a packet is considered delivered. The firmware also applies **retry backoff and jitter** to reduce synchronized retransmissions. Broadcast traffic is intentionally treated differently and does **not** use the same ACK guarantee model. In practical terms, this provides a controlled reliability layer, but it is **not equivalent to full collision-free or guaranteed delivery under all RF conditions**.
 
@@ -99,7 +140,80 @@ Routing and forwarding are implemented as a lightweight **multi-hop flood/relay 
 
 For hardware integration, the design uses **UART-based communication with the E22 radio**, optional **GPS over a dedicated UART**, optional **battery voltage sense on a divided ADC input (GPIO34)** for mobile-reported charge level, and a **BLE control/data bridge** for interaction with the official mobile application. The firmware also monitors module readiness through the **E22 AUX line** and uses a pseudo-busy transmit policy to reduce UART-side contention. This improves timing discipline around radio transmission, but it should be understood clearly: this is **not true RF carrier sensing or full CSMA/CA**.
 
-At the application layer, the firmware currently supports **encrypted short-form messaging, node identity, GPS position broadcasting, simple geometry objects (circle, line, square), device status signaling, and mobile-app-driven provisioning/control flows**. Persistent node identity, provisioning metadata, device naming, replay state, and selected queue data are all managed through **ESP32 NVS storage**, making the node stateful across reboots while still remaining compact enough for embedded deployment.
+At the application layer, the firmware currently supports **encrypted short-form messaging, node identity, GPS position broadcasting, geometry (circle, line, square) including delete/hide/show and style updates on the mesh where applicable, alerts (including delete), device status signaling, and mobile-app-driven provisioning/control flows**. Persistent node identity, provisioning metadata, device naming, replay state, and selected queue data are all managed through **ESP32 NVS storage**, making the node stateful across reboots while still remaining compact enough for embedded deployment.
+
+### MeshLink v2 wire layout
+
+The on-air and LoRa-facing frame is **`header || body`**, with **strict length**: total size **must** equal **16 + bodyLen** bytes (no shortened frames).
+
+**16-byte header (little-endian where multi-byte):**
+
+| Offset (bytes) | Content |
+|----------------|---------|
+| 0 | Magic **`0xA7`** |
+| 1 | Wire version **`2`** (MeshLink v2) |
+| 2–3 | Sender node ID (uint16 LE) |
+| 4–5 | Target node ID (uint16 LE) |
+| 6 | Hop count |
+| 7 | [Packet type](#packet-types-and-addressing) (0–10) |
+| 8–11 | Message UID (uint32 LE) |
+| 12 | Body length (1–52) |
+| 13 | Shape subtype or `0` (shape-related types) |
+| 14–15 | Shape RGB565 color (uint16 LE) for applicable shape packets |
+
+**Body:** either **plaintext** (when encryption is off) or **Ascon-128 AEAD** when LoRa encryption is on: **16-byte nonce** + ciphertext + **16-byte tag**, with the **16-byte header used as associated authenticated data (AAD)**. Maximum logical plaintext per packet is **20 bytes**; with encryption, the body budget is **52 bytes** maximum (hence **68 bytes** total wire including header).
+
+### Packet types and addressing
+
+**Broadcast / flood target ID:** **`0xFFFF`**. Unicast uses the peer’s **16-bit node ID** (stored in NVS, assigned at first boot).
+
+| Type ID | Role |
+|--------:|------|
+| `0` | Message (chat / binary payload) |
+| `1` | GPS position broadcast |
+| `2` | Shape geometry (circle / line / square) |
+| `3` | ACK (delivery confirmation) |
+| `4` | Shape delete |
+| `5` | Shape hide |
+| `6` | Shape show |
+| `7` | Status (mesh status channel; BLE may also use local extensions) |
+| `8` | Shape style (fill/stroke metadata) |
+| `9` | Alert |
+| `10` | Alert delete |
+
+Local-only BLE telemetry to the app (battery %, GPS summary, firmware build, etc.) is sent as **status** traffic using **local packet type `0xFE`** with per-feature **event IDs** (see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)).
+
+### Cryptographic derivations
+
+- **Password → master key:** **PBKDF2-HMAC-SHA256**, salt **`MeshGrid/PasswordKdf/v1`**, **120,000** iterations → **16-byte** master key in NVS (see [First Boot and Provisioning](#first-boot-and-provisioning)). **Key-policy and KDF version numbers** are stored alongside the key; if they do not match the firmware’s expected **`PROV_KEY_POLICY_VERSION`** / **`PROV_KDF_VERSION`**, the node requires **reprovisioning** (no silent compatibility with stale metadata).
+- **Master → transport keys:** **HKDF-SHA256** with `info` strings **`MeshGridBLEv2`** (BLE material) and **`MeshGridLoRav2`** (LoRa material).
+- **BLE pairing PIN:** HKDF-SHA256 from the **BLE-derived** key with info **`MeshGridBLEPin/v1`**, then mapped to a **six-digit decimal** value in the range **100000–999999** (inclusive).
+- **Per-packet LoRa keys:** For encrypted LoRa, a **packet key** is derived from the LoRa subkey using HKDF with a context that includes **sender ID** and **message UID**, so ciphertext is bound to those fields; the exact derivation is implemented in firmware (`meshDeriveLoraPacketKey`).
+
+**BLE link encryption:** When enabled, inner payloads use **AES-128-GCM** (typical **12-byte nonce**, **16-byte tag**) on the BLE path; outer mesh framing still uses the same **16-byte MeshLink header** semantics as the LoRa side for application data.
+
+### BLE GATT profile
+
+The sketch exposes a **Nordic UART Service (NUS)–compatible UUID layout** for application data:
+
+- **Service:** `6E400001-B5A3-F393-E0A9-E50E24DCCA9E`
+- **RX characteristic** (central writes commands / mesh data to the node): `6E400002-B5A3-F393-E0A9-E50E24DCCA9E`
+- **TX characteristic** (node notifies toward the phone): `6E400003-B5A3-F393-E0A9-E50E24DCCA9E`
+
+Pairing uses **LE Secure Connections**, **MITM** (static passkey), and **bonding**; unauthenticated sessions are dropped after the [pairing timeout](#ble-pairing-and-access-control).
+
+### Runtime tasks, watchdog, and internal limits
+
+Typical layout in the published sketch (ESP32 **dual-core**):
+
+- **BLE work** (notifications, pairing, decrypt/encrypt queues) and **LoRa mesh + scheduler + ACK/retry + RF dedup/relay** run as separate **FreeRTOS** tasks; **GPS NMEA** parsing runs when `ENABLE_GPS_TASK` is enabled.
+- **Task watchdog** is configured for a **~15 second** timeout (reset on unrecoverable hang).
+- Default **CPU frequency** for the power profile is **80 MHz** when idle; **Wi‑Fi is disabled** at boot.
+- **Internal caps (order-of-magnitude; see firmware for exact names):** pending **ACK** slots **8**, transmit **scheduler** slots **16**, **replay** tracking for **24** sender contexts, persisted **pending TX** blob count **5** (with an internal ring up to **8** before NVS write coalescing). These prevent unbounded RAM use and flash wear.
+
+### Security model limitations
+
+The mesh uses a **shared group password** (via PBKDF2) and **16-bit node IDs** chosen by each device. **Any node that knows the same mesh password can encrypt/decrypt traffic** and may **forge another node’s sender ID** on the radio unless stronger per-node identity (e.g. public-key or signed envelopes) is added in a future protocol. The optional **roster** limits which IDs the *firmware* will accept or target, but it is **not** a cryptographic proof of identity against an insider with the shared key. Treat deployment accordingly.
 
 ---
 
@@ -131,13 +245,13 @@ Once two supported nodes are installed, configured, and operating correctly, com
 
 ## BLE Pairing and Access Control
 
-The current firmware build does **not** expose an open BLE transport. The BLE link is part of the supported MeshGrid workflow and is protected by pairing and link authentication.
+The current firmware build does **not** expose an open BLE transport. The BLE link is part of the supported MeshGrid workflow and is protected by pairing and link authentication. **Service and characteristic UUIDs** (NUS-compatible layout) are listed under [BLE GATT profile](#ble-gatt-profile).
 
 Current behavior observed in the firmware:
 
 - BLE advertising starts automatically on boot using the stored device name
 - The device uses **BLE Secure Connections with MITM protection and bonding**
-- A **6-digit static passkey** is derived from the provisioned mesh key and is required during pairing
+- A **6-digit static passkey** is derived (via HKDF-SHA256) from the **BLE subkey** produced after provisioning — i.e. from the same key hierarchy as the mesh, not an independent PIN — and is required during pairing
 - If the node is not provisioned with a valid key, the mesh radio remains disabled until provisioning is completed
 - Unauthenticated BLE clients are disconnected automatically after the pairing timeout window (currently **20 seconds**)
 
@@ -253,8 +367,11 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - Relay behavior is enabled with a current **maximum hop count of 4**
 - RF duplicate suppression is enabled with a **3-second deduplication window**
 - Pending outgoing mesh packets are staged in NVS and replayed after reboot; the current staged packet limit is **5**
+- The optional node **roster / allow-list** (see provisioning `ROSTER:`) stores up to **8** node IDs
+- **Internal queues (typical):** **8** concurrent **ACK** trackers, **16** **scheduler** TX slots, **24** **replay** sender slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
-- GPS transmission logic is enabled in the build, with a default broadcast interval of **30 seconds** when compatible GPS hardware is present
+- GPS UART (when hardware is present) defaults to **9600 baud, 8N1** on the documented pins; GPS transmission logic is enabled in the build with a default position broadcast interval of **30 seconds** when a compatible receiver is present and producing fixes
+- **BLE telemetry cadence (when connected and authenticated):** local **GPS status** updates about every **3 seconds**; **battery** status about every **10 seconds** (see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting))
 - **Battery monitoring** (when wired as documented): the node samples cell voltage on **GPIO34** through a **10kΩ + 10kΩ** divider, applies smoothing and stabilization in firmware, and sends **BLE status telemetry** to the official app about every **10 seconds** while connected — see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
 
 These items are not merely implementation details. They define practical behavior such as payload budgeting, interoperability expectations, delivery semantics, and what should or should not be assumed during deployment.
@@ -462,7 +579,7 @@ The current firmware build is **not** purely plug-and-play after flashing. The `
 What happens on boot:
 
 - The USB serial console starts at **115200 baud**
-- A persistent **random 16-bit node ID** is generated on first boot and stored in NVS
+- A persistent **random 16-bit node ID** in **`1 … 65534`** (never **`0`**) is generated on first boot and stored in NVS
 - If no device name is present, the node creates a default name in the form **`MeshGrid_XX`**
 - If a valid key is not present and provisioning is required by the build policy, the node enters a provisioning loop and the mesh radio remains disabled until provisioning succeeds
 
@@ -479,9 +596,15 @@ The provisioning loop accepts line-based commands over the USB serial console:
 - `<password>`  
   Any password line between **8 and 64 characters** provisions the node key material
 
+When a roster is **enabled**, the firmware applies **allow-list checks**: **inbound** packets are accepted from the roster (and always from **your own** node ID); **senders `0` or broadcast `0xFFFF`** do not pass the roster gate when the list is active. **Outbound** unicast to a peer requires that peer’s ID to be on the roster; **broadcast** and traffic to **self** remain allowed. Up to **8** IDs are stored.
+
+### Optional: provisioning helper script (`provision.py`)
+
+If your internal firmware tree includes **`provision.py`**, it can drive the same USB serial protocol (password, optional `--name`, optional `--roster`) and is often more reliable than typing in a monitor. It is **not** part of this public repository. Close other serial programs before using it. Everyone else should use the [line-based provisioning](#provisioning-inputs-accepted-over-usb-serial) commands above.
+
 ### Provisioning behavior and constraints
 
-- The password is transformed into key material and stored in NVS; nodes must use the **same password** to participate in the same private mesh
+- The password is run through **PBKDF2-HMAC-SHA256** with salt **`MeshGrid/PasswordKdf/v1`** and **120,000** iterations to produce the stored master key material in NVS; nodes must use the **same password** to participate in the same private mesh
 - Custom short names are limited to **1-6 characters** and are restricted to **A-Z** and **0-9**
 - While waiting for provisioning, the onboard LED blinks repeatedly
 - After provisioning is successfully applied, the onboard LED blinks **five times quickly** as confirmation
@@ -544,7 +667,7 @@ The current firmware build exposes useful runtime diagnostics through the USB se
 
 Supported commands observed in the `.ino` implementation:
 
-- `stats` — prints runtime counters for AUX waits, relay activity, BLE auth results, ACK results, queue pressure, power profile, and radio sanity checks
+- `stats` — prints runtime counters (including **`BUILD=`**), AUX waits, relay activity, BLE auth results, ACK results, queue pressure, power profile, and radio sanity checks
 - `sched` — prints scheduler slot usage
 - `ack` — prints pending ACK tracker usage
 - `roster` — prints current roster / allow-list state
@@ -554,6 +677,8 @@ Supported commands observed in the `.ino` implementation:
 - `health` — prints a broader health snapshot including heap, stack, pending queues, and protocol counters
 - `radio` — prints LoRa UART/radio sanity information and the active UART pin mapping
 - `resetstats` — resets runtime counters without erasing protocol/NVS state
+
+Unknown lines print a short hint: `try: stats sched ack roster stack tasks health radio resetstats`.
 
 These commands should be considered part of the practical support surface for this firmware, especially during bring-up, field testing, and fault isolation.
 
@@ -724,7 +849,10 @@ Recommended actions:
 ## Important Notes
 
 - The current MeshGrid-Node firmware build requires a supported ESP32 board, the **EBYTE E22-900T22D** LoRa module, and a **compatible antenna**
-- The current build is **MeshLink v2 only** and should not be assumed to interoperate with older or differently framed firmware variants
+- **Cryptography (summary):** provisioning password → **PBKDF2-HMAC-SHA256** (salt `MeshGrid/PasswordKdf/v1`, **120,000** iterations) master key in NVS → **HKDF-SHA256** BLE/LoRa subkeys — details in [Cryptographic derivations](#cryptographic-derivations)
+- **Shared mesh password** authenticates the *group*, not individual devices: a malicious participant with the same password may still **spoof another node’s ID** on the radio; see [Security model limitations](#security-model-limitations)
+- The optional **`ROSTER:`** allow-list stores at most **8** node IDs
+- The current build is **MeshLink v2 only** and should not be assumed to interoperate with older or differently framed firmware variants — see [About MeshLink v2](#about-meshlink-v2)
 - If suitable battery capacity, current delivery, voltage stability, or overall power requirements are not met, message delivery issues, transmission instability, or other communication problems may occur during operation
 - Battery **percentage** in the app is derived from **voltage** (with firmware smoothing), not coulomb counting; recalibrate or adjust hardware if readings disagree persistently with a multimeter — see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
 - In the current build, a valid provisioned mesh key is operationally critical; flashing alone does not guarantee an active node
@@ -803,6 +931,7 @@ Based on the current `.ino` implementation, the active pin map for the present b
 
 - **ESP32 GPIO25** ← GPS TX (NMEA input into ESP32)
 - **ESP32 GPIO26** → GPS RX
+- GPS serial expected by firmware: **9600 baud, 8N1** (must match the connected module’s UART configuration)
 
 #### LEDs / local indicators
 
@@ -851,8 +980,9 @@ When `ENABLE_BATTERY_MONITOR` is enabled in firmware (default in current sources
 - `MESH_TYPE_STATUS`, local-node packet type **`0xFE`**, event **`0x43`** (`MESH_STATUS_EVENT_NODE_BATTERY`).
 - **`detail`:** 0–100 (stabilized %).
 - **`auxValue`:** cell voltage in **millivolts** (EMA; matches the same curve as `detail`).
+- Related events on the same local status path include **`0x41`** (GPS), **`0x42`** (GPS interval), and **`0x44`** (firmware **BUILD** number — typically sent once per authenticated BLE session; **`detail`** `0`, **`auxValue`** = build).
 
-Serial boot logs include **`BUILD=`** with the embedded **BUILD** number; match this to the GitHub Release asset you flashed.
+The embedded firmware **BUILD** number appears in **startup serial logs** (e.g. `[MeshGrid] boot BUILD …`) and in the **`stats`** output line **`BUILD=`**; match this to the GitHub Release asset you flashed.
 
 ### Power and Signal Notes
 

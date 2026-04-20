@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MeshGrid Node — Hardware list and pinout (MeshGrid-Node-Firmware)</title>
+  <style>
+    @page { size: A4; margin: 18mm; }
+    * { box-sizing: border-box; }
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      font-size: 10.5pt;
+      line-height: 1.45;
+      color: #111;
+      max-width: 210mm;
+      margin: 0 auto;
+      padding: 12mm 16mm 20mm;
+    }
+    h1 { font-size: 18pt; border-bottom: 2px solid #333; padding-bottom: 6px; margin-top: 0; }
+    h2 { font-size: 13pt; margin-top: 1.4em; margin-bottom: 0.5em; color: #222; }
+    h3 { font-size: 11pt; margin-top: 1em; color: #333; }
+    p { margin: 0.5em 0; }
+    table { width: 100%; border-collapse: collapse; margin: 0.6em 0 1em; font-size: 9.5pt; }
+    th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
+    th { background: #f4f4f4; font-weight: 600; }
+    code { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-size: 9pt; background: #f6f6f6; padding: 1px 4px; }
+    pre {
+      font-family: ui-monospace, Menlo, Consolas, monospace;
+      font-size: 8.5pt;
+      background: #f8f8f8;
+      border: 1px solid #ddd;
+      padding: 10px 12px;
+      overflow-x: auto;
+      white-space: pre;
+    }
+    .meta { color: #555; font-size: 9.5pt; margin-bottom: 1.2em; }
+    .note { font-size: 9.5pt; color: #444; border-left: 3px solid #888; padding-left: 10px; margin: 0.8em 0; }
+    .schematic-box {
+      font-size: 10pt;
+      background: #f0f6ff;
+      border: 1px solid #8ab4e8;
+      border-radius: 4px;
+      padding: 10px 14px;
+      margin: 0.8em 0 1.2em;
+    }
+    .schematic-box a { color: #0b57d0; font-weight: 600; }
+    @media print {
+      body { padding: 0; }
+      h2 { page-break-after: avoid; }
+      table { page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+
+<h1>MeshGrid Node — Hardware list and pinout</h1>
+
+<p class="meta">This document is published only in the <strong>MeshGrid-Node-Firmware</strong> repository. Hardware pinout and wiring summary are provided here as the <strong>official reference</strong>. Full source tree, <code>provision.py</code>, <code>partitions.csv</code>, and build instructions are <strong>not</strong> published in this repo (kept in a separate / internal project).</p>
+
+<p class="schematic-box">
+  <strong>Connection diagram (reference):</strong>
+  ESP32, E22 LoRa, GPS, and battery with a 10k+10k voltage divider — see
+  <a href="HARDWARE_SCHEMATIC.svg" target="_blank" rel="noopener">HARDWARE_SCHEMATIC.svg</a>
+  (open in a browser; printable). No PCB; breadboard / wiring aid only.
+</p>
+
+<h2>1. Software target</h2>
+<table>
+  <tr><th>Item</th><th>Value</th></tr>
+  <tr><td>Platform</td><td>ESP32 (Arduino framework)</td></tr>
+  <tr><td>PlatformIO board</td><td><code>esp32dev</code></td></tr>
+  <tr><td>Serial monitor / provisioning</td><td>115200 baud (via USB)</td></tr>
+  <tr><td>Partition</td><td><code>partitions.csv</code> lives in the source project (not published); end users only flash released <code>.bin</code> files and follow Release notes.</td></tr>
+</table>
+
+<h2>2. Bill of materials (typical build)</h2>
+<p>The firmware assumes the following hardware; your actual board may use different solder joints or connectors.</p>
+<table>
+  <tr><th>Component</th><th>Role</th><th>Note</th></tr>
+  <tr>
+    <td>ESP32 development module</td>
+    <td>Main MCU, BLE, WiFi (BLE used for mesh companion link), USB-serial</td>
+    <td>PlatformIO: <code>esp32dev</code>. Onboard LED is usually GPIO2.</td>
+  </tr>
+  <tr>
+    <td>Ebyte E22 (or compatible) LoRa module</td>
+    <td>Mesh RF, UART AT/transparent</td>
+    <td>Firmware: 9600 8N1. AUX indicates module idle for UART.</td>
+  </tr>
+  <tr>
+    <td>u-blox NEO-7M (or NMEA-compatible GPS)</td>
+    <td>Position (NMEA)</td>
+    <td>Default 9600 baud. GPS TX→ESP32 RX, GPS RX←ESP32 TX.</td>
+  </tr>
+  <tr>
+    <td>RGB LED (common cathode or PWM-capable)</td>
+    <td>Status indicator</td>
+    <td>PWM on GPIO 27 / 32 / 33 (LEDC).</td>
+  </tr>
+  <tr>
+    <td>USB–UART (usually on ESP32 board)</td>
+    <td>Flash, serial log, optional <code>provision.py</code></td>
+    <td>Close other programs using the serial port during provisioning.</td>
+  </tr>
+</table>
+
+<h2>3. UART links and baud rates</h2>
+<table>
+  <tr><th>Link</th><th>Hardware serial</th><th>Baud / format</th><th>ESP32 pins (default)</th></tr>
+  <tr>
+    <td>USB debug / provisioning</td>
+    <td><code>Serial</code></td>
+    <td>115200</td>
+    <td>Board USB–UART bridge (GPIO1 TX / GPIO3 RX via USB)</td>
+  </tr>
+  <tr>
+    <td>LoRa (E22)</td>
+    <td><code>LoRaSerial</code> (UART2)</td>
+    <td>9600, <code>SERIAL_8N1</code></td>
+    <td>RX=<strong>16</strong>, TX=<strong>17</strong> (<code>LORA_USE_PSRAM_SAFE 0</code>)</td>
+  </tr>
+  <tr>
+    <td>GPS (NEO-7M etc.)</td>
+    <td><code>GpsSerial</code> (UART1)</td>
+    <td>9600, <code>SERIAL_8N1</code></td>
+    <td>RX=<strong>25</strong>, TX=<strong>26</strong></td>
+  </tr>
+</table>
+<p class="note"><strong>Note:</strong> If LoRa baud was changed in AT mode, it must match <code>LORA_BAUD</code> in firmware.</p>
+
+<h2>4. GPIO summary (<code>MeshGrid_ESP32.ino</code>)</h2>
+<table>
+  <tr><th>GPIO</th><th>Direction</th><th>Function</th><th>Description</th></tr>
+  <tr><td>2</td><td>Output</td><td><code>LED_PIN</code></td><td>Usually onboard LED; blinks during provisioning.</td></tr>
+  <tr><td>15</td><td>Input</td><td><code>LORA_AUX_PIN</code></td><td>E22 AUX: HIGH = module ready for UART (idle).</td></tr>
+  <tr><td>16</td><td>RX</td><td>LoRa UART</td><td>E22 TX → ESP32 RX (<code>LORA_USE_PSRAM_SAFE 0</code>).</td></tr>
+  <tr><td>17</td><td>TX</td><td>LoRa UART</td><td>ESP32 TX → E22 RX.</td></tr>
+  <tr><td>21</td><td>Output LOW</td><td>Fixed</td><td>At startup: <code>pinMode(21, OUTPUT); digitalWrite(21, LOW);</code> — board-specific use.</td></tr>
+  <tr><td>22</td><td>Output LOW</td><td>Fixed</td><td>Same for GPIO 22.</td></tr>
+  <tr><td>25</td><td>RX</td><td>GPS</td><td>GPS TX → ESP32 (NMEA in).</td></tr>
+  <tr><td>26</td><td>TX</td><td>GPS</td><td>ESP32 → GPS RX (often optional; configuration).</td></tr>
+  <tr><td>27</td><td>PWM</td><td>RGB red</td><td><code>RGB_LED_R_PIN</code></td></tr>
+  <tr><td>32</td><td>PWM</td><td>RGB green</td><td><code>RGB_LED_G_PIN</code></td></tr>
+  <tr><td>33</td><td>PWM</td><td>RGB blue</td><td><code>RGB_LED_B_PIN</code></td></tr>
+  <tr><td>34</td><td>ADC in</td><td>Battery (divider)</td><td><code>ENABLE_BATTERY_MONITOR</code>: 18650 + 10k+10k → max ~2.1 V at pin (4.2 V cell). See section 5.</td></tr>
+</table>
+
+<h2>5. Battery (18650) — two 10k resistors to GPIO34</h2>
+<p class="note">Cell voltage can reach <strong>4.2 V</strong>; ESP32 ADC input must not exceed ~3.3 V. Equal divider (10k+10k): <code>VGPIO34 = Vbat / 2</code>. Firmware computes <code>Vbat = Vpin × 2</code>.</p>
+<pre>
+18650 (+) ----[ R1 10k ]----+---- GPIO34 (ADC1_CH6, input only)
+                             |
+                             +----[ R2 10k ]---- GND (common with cell (-) and ESP32 GND)
+18650 (-) ------------------------ GND
+
+Battery (-) and ESP32 GND must share the same reference (common ground).
+When powered only from USB: no cell → ADC may read noise or 0 V — expected.
+</pre>
+<p><strong>Safety:</strong> Wiring 4.2 V directly to a GPIO will damage the ESP32. Verify the divider (e.g. ~2.1 V on GPIO34 at full charge).</p>
+<p><strong>BLE telemetry (firmware):</strong> <code>MESH_TYPE_STATUS</code>, <code>event = 0x43</code> (<code>MESH_STATUS_EVENT_NODE_BATTERY</code>), <code>detail</code> = 0–100%, <code>auxValue</code> = cell mV. Parse this packet in the mobile app.</p>
+
+<h2>6. Alternate LoRa pin map (PSRAM-safe)</h2>
+<p>With <code>#define LORA_USE_PSRAM_SAFE 1</code> (PSRAM boards):</p>
+<table>
+  <tr><th>LoRa</th><th>GPIO</th></tr>
+  <tr><td>RX</td><td>5</td></tr>
+  <tr><td>TX</td><td>4</td></tr>
+</table>
+<p class="note">AUX stays <strong>15</strong>. Default build uses <code>LORA_USE_PSRAM_SAFE</code> = <strong>0</strong> (pins 16/17).</p>
+
+<h2>7. Wiring summary (text diagram)</h2>
+<pre>
+E22 LoRa                ESP32
+---------               -----
+VCC / GND               3V3 and GND per module / board requirements
+TX (module)      -->    GPIO16 (LoRa RX)
+RX (module)      <--    GPIO17 (LoRa TX)
+AUX              -->    GPIO15 (input)
+
+GPS NEO-7M              ESP32
+------------            -----
+VCC / GND               3V3 / GND (per module datasheet)
+TX               -->    GPIO25 (GPS RX)
+RX               <--    GPIO26 (GPS TX)  [optional]
+
+RGB LED (wiring per your board)          GPIO27 / 32 / 33
+</pre>
+
+<h2>8. GPS software switch</h2>
+<table>
+  <tr><th>Macro</th><th>Meaning</th></tr>
+  <tr><td><code>ENABLE_GPS_TASK 1</code></td><td>GPS UART enabled.</td></tr>
+  <tr><td><code>ENABLE_GPS_TASK 0</code></td><td>No GPS.</td></tr>
+</table>
+
+<h2>9. BLE (MeshLink companion)</h2>
+<table>
+  <tr><th>Item</th><th>Value</th></tr>
+  <tr><td>Service UUID</td><td><code>6E400001-B5A3-F393-E0A9-E50E24DCCA9E</code></td></tr>
+  <tr><td>RX / TX characteristics</td><td><code>6E400002-...</code> / <code>6E400003-...</code></td></tr>
+</table>
+
+<h2>10. Provisioning</h2>
+<p>Line-based USB commands match the main README. An optional <code>provision.py</code> helper may exist in the internal source tree; it is not published in this repository.</p>
+
+<p class="meta" style="margin-top: 2em;">Official site: <a href="https://meshgrid.org" rel="noopener">https://meshgrid.org</a></p>
+
+</body>
+</html>

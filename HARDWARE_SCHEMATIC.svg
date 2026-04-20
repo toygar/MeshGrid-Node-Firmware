@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 780" width="1000" height="780">
+  <title>MeshGrid Node - Reference wiring (ESP32, E22, GPS, battery divider)</title>
+  <style>
+    .blk { fill: #f5f5f5; stroke: #222; stroke-width: 1.4; }
+    .mod { fill: #e8f0fc; stroke: #153d72; stroke-width: 1.4; }
+    .bat { fill: #fff6dd; stroke: #806010; stroke-width: 1.4; }
+    .w { stroke: #111; stroke-width: 1.6; fill: none; }
+    .wg { stroke: #333; stroke-width: 2.2; fill: none; }
+    .t { font-family: "Segoe UI", Helvetica, Arial, sans-serif; fill: #111; }
+    .h { font-size: 15px; font-weight: 700; }
+    .p { font-size: 11px; }
+    .s { font-size: 9.5px; fill: #333; }
+    .n { font-size: 9px; fill: #444; }
+  </style>
+
+  <text x="500" y="26" text-anchor="middle" class="t h">MeshGrid Node - Reference connection diagram</text>
+  <text x="500" y="44" text-anchor="middle" class="t s">Firmware default pins (MeshGrid_ESP32.ino) - no PCB; breadboard / wiring aid</text>
+
+  <!-- ESP32 -->
+  <rect class="blk" x="360" y="60" width="320" height="380" rx="5"/>
+  <text x="520" y="86" text-anchor="middle" class="t h">ESP32 module (DevKit class)</text>
+  <text x="520" y="104" text-anchor="middle" class="t s">Tie all GND together (battery-, ESP32 GND, E22 GND, GPS GND)</text>
+
+  <text x="375" y="138" class="t p">GPIO16</text>
+  <text x="375" y="168" class="t p">GPIO17</text>
+  <text x="375" y="198" class="t p">GPIO15</text>
+  <text x="375" y="238" class="t p">GPIO25</text>
+  <text x="375" y="268" class="t p">GPIO26</text>
+  <text x="375" y="308" class="t p">GPIO34</text>
+  <text x="375" y="338" class="t p">GPIO2</text>
+  <text x="375" y="368" class="t p">27 / 32 / 33</text>
+  <text x="375" y="408" class="t p">GND</text>
+  <text x="375" y="438" class="t p">3V3</text>
+
+  <text x="655" y="138" class="t s">&lt;- LoRa RX (from E22 TXD)</text>
+  <text x="655" y="168" class="t s">-&gt; LoRa TX (to E22 RXD)</text>
+  <text x="655" y="198" class="t s">&lt;- E22 AUX</text>
+  <text x="655" y="238" class="t s">&lt;- GPS TX (NMEA)</text>
+  <text x="655" y="268" class="t s">-&gt; GPS RX</text>
+  <text x="655" y="308" class="t s">ADC1, battery divider</text>
+  <text x="655" y="338" class="t s">Status LED</text>
+  <text x="655" y="368" class="t s">RGB PWM (optional)</text>
+
+  <!-- E22 -->
+  <rect class="mod" x="40" y="110" width="200" height="190" rx="4"/>
+  <text x="140" y="138" text-anchor="middle" class="t h">E22-900T22D</text>
+  <text x="140" y="156" text-anchor="middle" class="t s">UART 9600 8N1</text>
+  <text x="52" y="188" class="t p">VCC</text>
+  <text x="52" y="213" class="t p">GND</text>
+  <text x="52" y="238" class="t p">TXD</text>
+  <text x="52" y="263" class="t p">RXD</text>
+  <text x="52" y="288" class="t p">AUX</text>
+  <text x="140" y="292" text-anchor="middle" class="t n">M0/M1: per module datasheet</text>
+
+  <!-- GPS -->
+  <rect class="mod" x="760" y="110" width="200" height="150" rx="4"/>
+  <text x="860" y="138" text-anchor="middle" class="t h">GPS (NMEA)</text>
+  <text x="860" y="156" text-anchor="middle" class="t s">e.g. NEO-7M, 9600 8N1</text>
+  <text x="772" y="188" class="t p">VCC</text>
+  <text x="772" y="213" class="t p">GND</text>
+  <text x="772" y="238" class="t p">TX</text>
+  <text x="772" y="263" class="t p">RX</text>
+
+  <!-- Battery divider -->
+  <rect class="bat" x="40" y="380" width="260" height="200" rx="4"/>
+  <text x="170" y="410" text-anchor="middle" class="t h">Battery + 10k / 10k divider</text>
+  <text x="170" y="428" text-anchor="middle" class="t s">18650 or 1S Li-ion (common GND with ESP32)</text>
+
+  <line x1="100" y1="500" x2="130" y2="500" class="w"/>
+  <line x1="115" y1="488" x2="115" y2="512" stroke="#111" stroke-width="3"/>
+  <line x1="105" y1="500" x2="125" y2="500" stroke="#111" stroke-width="1.5"/>
+  <text x="135" y="505" class="t p">BAT+ (3.0 - 4.2 V)</text>
+
+  <rect x="185" y="488" width="36" height="14" fill="none" stroke="#222"/>
+  <text x="203" y="482" text-anchor="middle" class="t n">10k</text>
+  <line x1="130" y1="500" x2="185" y2="500" class="w"/>
+  <line x1="221" y1="500" x2="250" y2="500" class="w"/>
+  <circle cx="250" cy="500" r="3" fill="#111"/>
+
+  <rect x="185" y="538" width="36" height="14" fill="none" stroke="#222"/>
+  <text x="203" y="532" text-anchor="middle" class="t n">10k</text>
+  <line x1="250" y1="500" x2="250" y2="545" class="w"/>
+  <line x1="221" y1="545" x2="300" y2="545" class="w"/>
+  <text x="305" y="550" class="t p">BAT- (GND)</text>
+
+  <text x="170" y="575" text-anchor="middle" class="t n">Midpoint to GPIO34: Vpin ~ Vcell/2 (must stay &lt;= 3.3 V)</text>
+
+  <!-- Wires: E22 UART -->
+  <path class="w" d="M 240 238 L 300 238 L 300 128 L 358 128"/>
+  <text x="265" y="122" class="t n">TXD to GPIO16</text>
+  <path class="w" d="M 240 263 L 315 263 L 315 158 L 358 158"/>
+  <text x="268" y="152" class="t n">RXD to GPIO17</text>
+  <path class="w" d="M 240 288 L 290 288 L 290 188 L 358 188"/>
+  <text x="248" y="182" class="t n">AUX to GPIO15</text>
+
+  <!-- 3V3 rail symbol -->
+  <line x1="240" y1="188" x2="330" y2="188" class="w"/>
+  <line x1="330" y1="188" x2="330" y2="455" class="w"/>
+  <line x1="330" y1="455" x2="680" y2="455" class="w"/>
+  <text x="400" y="448" class="t n">3V3 rail (modules per datasheet current limit)</text>
+
+  <path class="w" d="M 240 213 L 320 213 L 320 480 L 680 480"/>
+  <text x="400" y="473" class="t n">GND rail (common)</text>
+
+  <!-- GPS -->
+  <path class="w" d="M 760 238 L 720 238 L 720 228 L 358 228"/>
+  <text x="520" y="222" class="t n">GPS TX to GPIO25</text>
+  <path class="w" d="M 760 263 L 710 263 L 710 258 L 358 258"/>
+  <text x="515" y="252" class="t n">GPS RX to GPIO26</text>
+  <path class="w" d="M 760 188 L 730 188 L 730 455 L 680 455"/>
+  <path class="w" d="M 760 213 L 700 213 L 700 480 L 680 480"/>
+
+  <!-- Divider to GPIO34 -->
+  <path class="w" d="M 250 500 L 250 360 L 358 298"/>
+  <text x="285" y="330" class="t n">to GPIO34</text>
+
+  <!-- ESP GND node -->
+  <circle cx="680" cy="480" r="4" fill="#333"/>
+  <path class="wg" d="M 358 408 L 680 408 L 680 480"/>
+  <text x="500" y="402" class="t n">ESP32 GND to common</text>
+
+  <!-- Notes -->
+  <rect x="360" y="500" width="600" height="250" fill="#fafafa" stroke="#999" stroke-dasharray="5 4" rx="4"/>
+  <text x="375" y="528" class="t h">Notes</text>
+  <text x="375" y="552" class="t n">- Power: DevKit often accepts USB 5 V on-board regulator; E22/GPS typically need 3.3 V within module abs max.</text>
+  <text x="375" y="572" class="t n">- GPIO34 is input-only; never exceed ~3.3 V. With 10k+10k divider, 4.2 V cell gives ~2.1 V at pin (safe).</text>
+  <text x="375" y="592" class="t n">- Do not transmit on the LoRa module without a suitable antenna (module damage risk).</text>
+  <text x="375" y="612" class="t n">- If E22 UART is not 9600 8N1, reconfigure module or change LORA_BAUD in firmware to match.</text>
+  <text x="375" y="632" class="t n">- Firmware also pulls GPIO21 and GPIO22 LOW at boot; not shown. RGB uses GPIO27/32/33.</text>
+  <text x="375" y="652" class="t n">- Reference only; verify E22/GPS datasheets and local RF regulations before transmit.</text>
+
+  <text x="500" y="728" text-anchor="middle" class="t s">https://meshgrid.org</text>
+  <text x="500" y="748" text-anchor="middle" class="t s">MeshGrid-Node-Firmware / HARDWARE_SCHEMATIC.svg</text>
+</svg>
