@@ -46,7 +46,7 @@ Together they form a **self-contained coordination layer** for teams working **w
 
 ---
 
-**This repository** is the **official distribution channel** for **MeshGrid-Node** firmware binaries, flashing instructions, and published hardware references (**[HARDWARE_PINOUT.html](HARDWARE_PINOUT.html)**, **[HARDWARE_SCHEMATIC.svg](HARDWARE_SCHEMATIC.svg)**). **Project website:** [https://meshgrid.org](https://meshgrid.org)
+**This repository** is the **official distribution channel** for **MeshGrid-Node** firmware binaries, flashing instructions, and published hardware references (**[HARDWARE_PINOUT.html](HARDWARE_PINOUT.html)**, **[HARDWARE_SCHEMATIC.svg](HARDWARE_SCHEMATIC.svg)**). **Project website:** [https://meshgrid.org](https://meshgrid.org) · **MeshGrid app (iOS):** [App Store](https://apps.apple.com/tr/app/meshgrid/id6760400899)
 
 MeshGrid-Node enables **encrypted sub-GHz LoRa mesh** communication and **offline coordination and tactical mapping** workflows for small teams and field-oriented use cases.
 
@@ -58,7 +58,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
 - **Radio:** EBYTE E22-900T22D + compatible antenna
 - **Transport:** **MeshLink v2** - MeshGrid’s own sub-GHz mesh framing (encrypted LoRa + BLE companion path); see [About MeshLink v2](#about-meshlink-v2)
 - **Security:** Password-derived master key (PBKDF2-HMAC-SHA256), HKDF-SHA256 subkeys, Ascon AEAD (LoRa), AES-GCM (BLE)
-- **Companion App:** Official MeshGrid mobile application only
+- **Companion App:** Official MeshGrid mobile app — [App Store (iOS)](https://apps.apple.com/tr/app/meshgrid/id6760400899)
 - **Distribution Model:** Prebuilt firmware releases with flashing guidance
 - **Official website:** [meshgrid.org](https://meshgrid.org)
 - **Hardware docs (this repo):** [`HARDWARE_PINOUT.html`](HARDWARE_PINOUT.html) · [`HARDWARE_SCHEMATIC.svg`](HARDWARE_SCHEMATIC.svg) (English) - published here so installers do not need a private source repo; see [Hardware documentation](#hardware-documentation-pinout-and-schematic)
@@ -264,10 +264,12 @@ Supported client distribution channels:
 - **Apple App Store** - official MeshGrid iOS application
 - **Google Play Store** - official MeshGrid Android application
 
-Official store links will be added here when the applications are publicly listed:
+Official store listings:
 
-- **App Store:** *To be announced*
-- **Google Play:** *To be announced*
+- **App Store (iOS):** [MeshGrid on the App Store](https://apps.apple.com/tr/app/meshgrid/id6760400899)
+- **Google Play (Android):** *To be announced*
+
+For **App Store promo codes**, email [info@meshgrid.org](mailto:info@meshgrid.org). **Only 100 promo codes** are available in total.
 
 Important compatibility notes:
 
@@ -691,7 +693,7 @@ After the firmware and hardware setup are complete:
 
 1. Verify that both nodes are powered correctly and boot without error
 2. Verify that the **EBYTE E22-900T22D** module and compatible antenna are installed on each node
-3. Install the official **MeshGrid** mobile app from the **Apple App Store** or **Google Play Store**
+3. Install the official **MeshGrid** mobile app from the [**App Store** (iOS)](https://apps.apple.com/tr/app/meshgrid/id6760400899). (Android: Google Play link under [Official Mobile App Compatibility](#official-mobile-app-compatibility) when available.)
 4. Open the official app and follow the supported MeshGrid setup flow
 5. Add or connect the nodes as supported by the application
 6. Once two supported nodes are installed and configured correctly, communication between the two nodes can be established through the official MeshGrid mobile application
