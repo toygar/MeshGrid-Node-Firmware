@@ -390,7 +390,7 @@ Depending on the release, firmware may be provided in one of the following forma
 
 These releases are intended for supported ESP32 boards used with the **EBYTE E22-900T22D** LoRa module and a **compatible antenna** in the expected MeshGrid-Node hardware configuration.
 
-Always check the corresponding GitHub Release page for the exact binary layout, compatibility notes, offsets, and any release-specific instructions.
+Download official binaries from the **[GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases)** page (not from a `releases/` folder in this repo). Always check the release notes for the exact binary layout, compatibility notes, flash offsets, and SHA256 checksums.
 
 
 ## Current Build Characteristics
@@ -410,7 +410,7 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - The optional node **roster / allow-list** (see provisioning `ROSTER:`) stores up to **8** node IDs
 - **Internal queues (typical):** **8** concurrent **ACK** trackers, **16** **scheduler** TX slots, **24** **replay** sender slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
-- **Current public binary:** **BUILD 102** (`factory_v0.0.4.bin`) — see [Release notes for v0.0.4](releases/factory_v0.0.4/RELEASE_NOTES.md)
+- **Current public binary:** **BUILD 102** (`factory_v0.0.4.bin`) — see **[MeshGrid ESP32 - factory_v0.0.4 (BUILD 102)](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.4)** on GitHub Releases
 - GPS UART (when hardware is present) defaults to **9600 baud, 8N1** on the documented pins; GPS transmission logic is enabled in the build with a default position broadcast interval of **30 seconds** when a compatible receiver is present and producing fixes
 - **BLE telemetry cadence (when connected and authenticated):** local **GPS status** updates about every **3 seconds**; **battery** status about every **10 seconds** (see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting))
 - **Battery monitoring** (when wired as documented): the node samples cell voltage on **GPIO34** through a **10kΩ + 10kΩ** divider, applies smoothing and stabilization in firmware, and sends **BLE status telemetry** to the official app about every **10 seconds** while connected - see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
@@ -1013,7 +1013,8 @@ When `ENABLE_BATTERY_MONITOR` is enabled in firmware (default in current sources
 **Stability behavior (factory `v0.0.4` / BUILD 102)**
 
 - **Signal Test / sustained mesh probes:** BUILD 102 fixes a lockup that could occur after hundreds of probes when the official app runs Signal Test with BLE connected. BLE status/RF telemetry is shed under queue pressure; signal-test traffic uses a lighter path; stuck LoRa scheduler slots are reclaimed after 4.5 s. Validated with 420 dual-node probes (~35 min) without reset.
-- **Older note (`factory_v0.0.3` / BUILD 87):**
+
+**Battery display stability (from `factory_v0.0.3` / BUILD 87 onward)**
 
 - **EMA** smoothing on cell millivolts to reduce ADC noise between intervals.
 - **Single-step** percentage changes use a **millivolt hysteresis band** so small noise does not constantly tick the value.
