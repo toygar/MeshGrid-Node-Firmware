@@ -644,7 +644,44 @@ When a roster is **enabled**, the firmware applies **allow-list checks** (see [A
 
 ### Optional: provisioning helper script (`provision.py`)
 
-If your internal firmware tree includes **`provision.py`**, it can drive the same USB serial protocol (password, optional `--name`, optional `--roster`) and is often more reliable than typing in a monitor. It is **not** part of this public repository. Close other serial programs before using it. Everyone else should use the [line-based provisioning](#provisioning-inputs-accepted-over-usb-serial) commands above.
+If you maintain a **private firmware source tree**, it may include **`provision.py`** — a Python helper that drives the same USB serial protocol as manual provisioning. It is **not** shipped in this public repository, but teams that build from source often use it instead of typing into a serial monitor.
+
+Close Serial Monitor and other serial tools before running the script. The script waits for device acknowledgements before reporting success.
+
+**Basic usage** (password only):
+
+```bash
+cd MeshGrid_ESP32   # private source tree — not this repo
+pip install pyserial
+python3 provision.py MyPrivateMesh2024
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001
+```
+
+**Optional device name** (`--name`, 1–6 chars, `A-Z` / `0-9`):
+
+```bash
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --name ALFA01
+```
+
+**Optional roster at install time** (`--roster`) — same effect as sending `ROSTER:…` before the password line. Use the **same comma-separated ID list on every node** in the mesh (see [Authorized Node Roster](#authorized-node-roster-allow-list)):
+
+```bash
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --roster 20415,25940
+```
+
+**Name + roster in one session:**
+
+```bash
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --name ALFA01 --roster 20415,25940
+```
+
+**Explicitly disable roster** during provisioning:
+
+```bash
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --roster OFF
+```
+
+> End users flashing only the [GitHub Release](https://github.com/toygar/MeshGrid-Node-Firmware/releases) binary should use the [line-based serial commands](#provisioning-inputs-accepted-over-usb-serial) (`ROSTER:…`, then password) — no `provision.py` required.
 
 ### Provisioning behavior and constraints
 
@@ -753,14 +790,20 @@ roster clear
 
 Replace `20415,25940` with the **actual node IDs** from your devices. Every node in the mesh must carry the **same comma-separated list** (including its own ID).
 
-If you maintain a private source tree with **`provision.py`**, you can pass `--roster 20415,25940` in the same session as password provisioning. That script is **not** part of this public repository.
+**Using `provision.py` (private source tree only):** pass `--roster` in the same run as the mesh password — see [Optional: provisioning helper script](#optional-provisioning-helper-script-provisionpy). Example:
+
+```bash
+python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --roster 20415,25940
+```
+
+To provision **without** a roster: omit `--roster`, or use `--roster OFF`.
 
 ### Multi-node setup workflow
 
 1. Flash and provision each node with the **same mesh password**.
 2. Read each node’s **random node ID** from serial or the app.
 3. Build one roster string with **all** participating IDs.
-4. Apply that roster on **every** node (`ROSTER:…` at provision time, or `roster set …` later).
+4. Apply that roster on **every** node — at provision time via `ROSTER:…`, **`provision.py --roster …`** (private source tree), or later via `roster set …`.
 5. Verify with `roster` on each node — enabled, same IDs, count ≤ 8.
 6. For **BUILD 106+**, roster also drives **signal-test probe staggering** (next section).
 
