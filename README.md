@@ -60,6 +60,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
 - **Security:** Password-derived master key (PBKDF2-HMAC-SHA256), HKDF-SHA256 subkeys, Ascon AEAD (LoRa), AES-GCM (BLE)
 - **Companion App:** Official MeshGrid mobile app — [App Store (iOS)](https://apps.apple.com/tr/app/meshgrid/id6760400899)
 - **Distribution Model:** Prebuilt firmware releases with flashing guidance
+- **Multi-node roster:** Optional **8-ID allow-list** — manual setup required; see [Authorized Node Roster](#authorized-node-roster-allow-list)
 - **Official website:** [meshgrid.org](https://meshgrid.org)
 - **Hardware docs (this repo):** [`HARDWARE_PINOUT.html`](HARDWARE_PINOUT.html) · [`HARDWARE_SCHEMATIC.svg`](HARDWARE_SCHEMATIC.svg) (English) - published here so installers do not need a private source repo; see [Hardware documentation](#hardware-documentation-pinout-and-schematic)
 
@@ -105,6 +106,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
   - [Optional: Erase Flash Before Installation](#optional-erase-flash-before-installation)
   - [Verifying the Installation](#verifying-the-installation)
 - [Getting Started After Installation](#getting-started-after-installation)
+- [Authorized Node Roster (Allow-List)](#authorized-node-roster-allow-list)
 - [Serial Diagnostics and Maintenance](#serial-diagnostics-and-maintenance)
 - [Troubleshooting](#troubleshooting)
 - [Important Notes](#important-notes)
@@ -408,7 +410,7 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - Relay behavior is enabled with a current **maximum hop count of 4**
 - RF duplicate suppression is enabled with a **3-second deduplication window**
 - Pending outgoing mesh packets are staged in NVS and replayed after reboot; the current staged packet limit is **5**
-- The optional node **roster / allow-list** (see provisioning `ROSTER:`) stores up to **8** node IDs
+- The optional node **roster / allow-list** stores up to **8** node IDs — see [Authorized Node Roster (Allow-List)](#authorized-node-roster-allow-list)
 - **Internal queues (typical):** **12** concurrent **ACK** trackers, **24** **scheduler** TX slots, **4** **pending direct** slots, **24** **replay** sender slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
 - **Current public binary:** **BUILD 107** (`factory_v0.0.5.bin`) — see **[MeshGrid ESP32 - factory_v0.0.5 (BUILD 107)](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5)** on GitHub Releases
@@ -638,9 +640,7 @@ The provisioning loop accepts line-based commands over the USB serial console:
 - `<password>`  
   Any password line between **8 and 64 characters** provisions the node key material
 
-When a roster is **enabled**, the firmware applies **allow-list checks**: **inbound** packets are accepted from the roster (and always from **your own** node ID); **senders `0` or broadcast `0xFFFF`** do not pass the roster gate when the list is active. **Outbound** unicast to a peer requires that peer’s ID to be on the roster; **broadcast** and traffic to **self** remain allowed. Up to **8** IDs are stored.
-
-**Node ID vs roster:** Each device gets a **random 16-bit node ID** on first boot (stored in NVS). It is **not** assigned by the user and **not** the hardware serial. The roster is **not** populated automatically — you must set the same allow-list on every node (`ROSTER:…`, `roster set …`, or an internal provisioning script). For **BUILD 106+** signal-test probe staggering, slot rank is the index of **your node ID** in the **sorted** roster list (not CSV entry order).
+When a roster is **enabled**, the firmware applies **allow-list checks** (see [Authorized Node Roster](#authorized-node-roster-allow-list)). Up to **8** IDs are stored.
 
 ### Optional: provisioning helper script (`provision.py`)
 
@@ -704,6 +704,86 @@ After the firmware and hardware setup are complete:
 
 > The supported user workflow is based on the official MeshGrid application. Firmware-only installation does not by itself provide the complete supported user experience.
 
+---
+
+## Authorized Node Roster (Allow-List)
+
+The **roster** (also called **allow-list**) is an optional NVS-stored list of up to **8** node IDs. When enabled, firmware accepts LoRa traffic **only** from IDs on that list (plus **your own** node ID). It is **recommended for multi-node private deployments** starting with **BUILD 106+**, because roster-aware probe slotting reduces on-air collisions when several nodes run Signal Test or sustained mesh traffic.
+
+> **Roster is not cryptographic identity.** Any node that knows the same mesh password can still forge another sender ID on the radio. The roster limits what the *firmware* will accept or target — see [Security model limitations](#security-model-limitations).
+
+### Node ID vs roster (important)
+
+| Topic | Behavior |
+| --- | --- |
+| **Node ID** | Random **16-bit** value (`1 … 65534`) generated on **first boot** and stored in NVS. **Not** user-assigned. **Not** the USB serial or chip MAC. |
+| **Finding your ID** | USB serial **115200** → boot log or `stats` output; also visible in the official app after pairing. |
+| **Roster population** | **Not automatic.** You must configure the **same** ID list on **every** node in the mesh. |
+| **CSV order** | Entry order in `ROSTER:…` or `roster set …` does **not** define probe slot rank — see below. |
+
+### Allow-list rules (when roster is enabled)
+
+- **Inbound:** accept packets from roster IDs and from **self**; reject unknown senders. Senders **`0`** or broadcast **`0xFFFF`** do not pass the roster gate.
+- **Outbound unicast:** target peer must be on the roster.
+- **Outbound broadcast** and traffic to **self:** still allowed.
+- **Hard cap:** **8** stored IDs (`MESH_ROSTER_MAX_NODES`).
+
+### How to configure the roster
+
+**During first provisioning** (USB serial, **115200** baud):
+
+```text
+ROSTER:20415,25940
+<your mesh password>
+```
+
+Or disable:
+
+```text
+ROSTER:OFF
+```
+
+**After the node is running** (same serial console):
+
+```text
+roster set 20415,25940
+roster
+roster clear
+```
+
+Replace `20415,25940` with the **actual node IDs** from your devices. Every node in the mesh must carry the **same comma-separated list** (including its own ID).
+
+If you maintain a private source tree with **`provision.py`**, you can pass `--roster 20415,25940` in the same session as password provisioning. That script is **not** part of this public repository.
+
+### Multi-node setup workflow
+
+1. Flash and provision each node with the **same mesh password**.
+2. Read each node’s **random node ID** from serial or the app.
+3. Build one roster string with **all** participating IDs.
+4. Apply that roster on **every** node (`ROSTER:…` at provision time, or `roster set …` later).
+5. Verify with `roster` on each node — enabled, same IDs, count ≤ 8.
+6. For **BUILD 106+**, roster also drives **signal-test probe staggering** (next section).
+
+### Roster-aware probe slotting (BUILD 106+)
+
+Signal-test / bench probes use **8** transmit slots spaced **600 ms** apart to share LoRa airtime:
+
+- **Roster enabled:** each node’s slot index = position of **your node ID** in the **sorted** roster list (your ID is included automatically if missing from the stored list). **Not** the order you typed in the CSV.
+- **Roster disabled:** slot index = callsign hash **`% 8`** (legacy fallback).
+
+Example: roster IDs `25940, 20415` → sorted `20415, 25940` → node **20415** uses slot **0**, node **25940** uses slot **1**.
+
+### Multi-node capacity (planning)
+
+| Deployment size | Guidance |
+| --- | --- |
+| **Firmware hard cap** | **8** roster IDs |
+| **Recommended production ceiling** (GPS + chat) | **≤ 5** nodes |
+| **7–8 nodes** | **Marginal** for sustained airtime unless traffic is reduced |
+
+Before relying on multi-node **Signal Test**, map sync, or long soak runs, confirm the roster lists **every** live node ID on **every** node. See also [Current Build Characteristics](#current-build-characteristics) and the [v0.0.5 release notes](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5).
+
+---
 
 ## Serial Diagnostics and Maintenance
 
@@ -1017,11 +1097,7 @@ When `ENABLE_BATTERY_MONITOR` is enabled in firmware (default in current sources
 
 - **Signal Test / sustained mesh probes (BUILD 102):** fixes a lockup after hundreds of probes when the official app runs Signal Test with BLE connected. BLE status/RF telemetry is shed under queue pressure; signal-test traffic uses a lighter path; stuck LoRa scheduler slots are reclaimed after 4.5 s. Validated with 420 dual-node probes (~35 min) without reset.
 - **Multi-node airtime / BLE backpressure (BUILD 106–107):** LoRa→phone BLE notifies are skipped when the phone is not connected; signal-test probes are dropped if the BLE notify queue is nearly full. Probe TX uses **8 × 600 ms** slots (roster-aware when roster is enabled). Flood duplicate broadcast TX is suppressed under channel pressure **≥ 2**. Scheduler capacity **16 → 24**; ACK trackers **8 → 12**; pending-direct buffer **2 → 4**.
-- **Field validation (BUILD 107):** dual-node rostered soak **~6 h** (~99.96% / 100% probe delivery); **2 h** roster simulation with **5** roster IDs and **2** live nodes (Sim-B) completed without lockup. Bench commands: `txprobe`, `stress on` / `stress off` (see [Serial Diagnostics](#serial-diagnostics-and-maintenance)).
-
-**Multi-node capacity (planning guidance)**
-
-- Firmware roster hard cap: **8** node IDs. For typical **GPS + chat** traffic, treat **≤ 5** rostered nodes as the practical production ceiling; **7–8** nodes are marginal for sustained airtime unless traffic is reduced. Roster must list **every** participating node ID on **every** node before relying on multi-node Signal Test or map sync.
+- **Field validation (BUILD 107):** dual-node rostered soak **~6 h** (~99.96% / 100% probe delivery); **2 h** roster simulation with **5** roster IDs and **2** live nodes (Sim-B) completed without lockup. Bench commands: `txprobe`, `stress on` / `stress off` (see [Serial Diagnostics](#serial-diagnostics-and-maintenance)). Roster setup and capacity limits: [Authorized Node Roster](#authorized-node-roster-allow-list).
 
 **Battery display stability (from `factory_v0.0.3` / BUILD 87 onward)**
 
