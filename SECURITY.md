@@ -8,12 +8,14 @@ The MeshGrid-Node firmware is under active development. Security fixes, when iss
 
 | Version   | Supported |
 | --------- | --------- |
-| v0.0.3    | :white_check_mark: |
+| v0.0.5    | :white_check_mark: |
+| v0.0.4    | :x: |
+| v0.0.3    | :x: |
 | v0.0.2    | :x: |
 | v0.0.1    | :x: |
 | < v0.0.1  | :x: |
 
-Firmware artifacts may use tags such as `factory_v0.0.3`; treat **v0.0.3** as the supported release line for security-relevant updates.
+Firmware artifacts may use tags such as `factory_v0.0.5`; treat **v0.0.5** as the supported release line for security-relevant updates.
 
 ## Reporting a Vulnerability
 
