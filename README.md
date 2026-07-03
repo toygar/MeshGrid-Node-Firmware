@@ -104,6 +104,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
   - [Flashing the Firmware](#flashing-the-firmware)
   - [Manual Bootloader Mode](#manual-bootloader-mode)
   - [First Boot and Provisioning](#first-boot-and-provisioning)
+    - [Upgrading from a previous release (e.g. v0.0.4 → v0.0.5)](#upgrading-from-a-previous-release-eg-v004--v005)
   - [Optional: Erase Flash Before Installation](#optional-erase-flash-before-installation)
   - [Verifying the Installation](#verifying-the-installation)
 - [Getting Started After Installation](#getting-started-after-installation)
@@ -153,7 +154,7 @@ These files are **reference breadboard/wiring aids** (no official PCB). Always m
 
 ### Firmware source code
 
-The Arduino / **firmware source** (`.ino` sketch, crypto, `provision.py`, `partitions.csv`, PlatformIO layout) is **not** published in **this** repository. This repo is intended for **released `.bin` files**, installation, compliance text, and the **hardware documents above**. If you maintain a separate private source tree, keep it in sync with what you ship.
+The Arduino / **firmware source** (`.ino` sketch, crypto, `provision.py`, `partitions.csv`, PlatformIO layout) is **not** published in **this** repository. This repo distributes **released `.bin` files through [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases)** plus installation docs, compliance text, and the **hardware documents above**. If you maintain a separate private source tree, keep it in sync with what you ship.
 
 ### Building from source
 
@@ -633,7 +634,7 @@ What happens on boot:
 
 - The USB serial console starts at **115200 baud**
 - A persistent **random 16-bit node ID** in **`1 … 65534`** (never **`0`**) is generated on first boot and stored in NVS
-- If no device name is present, the node creates a default name in the form **`MeshGrid_XX`**
+- If no BLE device name is present, the node creates a default name in the form **`MeshGrid_XX`** ( **`XX` = 01–99 from the ESP32 chip ID**, used for BLE advertising only — **not** the LoRa mesh node ID; see [Node ID vs roster](#node-id-vs-roster-important))
 - If a valid key is not present and provisioning is required by the build policy, the node enters a provisioning loop and the mesh radio remains disabled until provisioning succeeds
 
 ### Provisioning inputs accepted over USB serial
@@ -702,6 +703,15 @@ python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --roster OFF
 
 This point is operationally critical: **a successful flash is not equivalent to a usable radio node**. Without a valid provisioned key, the current secure-mode build can remain unable to participate in the mesh.
 
+### Upgrading from a previous release (e.g. v0.0.4 → v0.0.5)
+
+- Download the new **`factory_v0.0.5.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5) and flash at **`0x0000`** (see [Flashing the Firmware](#flashing-the-firmware)).
+- **Same mesh password:** no re-provisioning required if NVS still holds a valid key with matching KDF/policy metadata.
+- **Roster / device name:** preserved in NVS across upgrade unless you erase flash.
+- **Pending TX replay queue:** cleared automatically when the stored **BUILD** number changes (existing behavior).
+- After flash, verify serial **115200** → `[MeshGrid] boot BUILD 107` or `stats` → `BUILD=107`.
+- If pairing or key-policy errors appear, reprovision after an optional `erase_flash` rather than assuming old state remains valid.
+
 
 ## Optional: Erase Flash Before Installation
 
@@ -722,8 +732,8 @@ Then run the flashing command again.
 After flashing completes successfully:
 
 1. Press the **EN** button once to reboot the board
-2. Open a serial monitor using the baud rate expected by the firmware
-3. Confirm that the board boots normally and outputs startup logs
+2. Open a serial monitor at **115200 baud**
+3. Confirm that the board boots normally and outputs startup logs (e.g. `[MeshGrid] boot BUILD …`)
 
 ### Verification checklist
 
@@ -763,6 +773,7 @@ The **roster** (also called **allow-list**) is an optional NVS-stored list of up
 | Topic | Behavior |
 | --- | --- |
 | **Node ID** | Random **16-bit** value (`1 … 65534`) generated on **first boot** and stored in NVS. **Not** user-assigned. **Not** the USB serial or chip MAC. |
+| **BLE device name** | Default **`MeshGrid_XX`** (`XX` = 01–99 from chip ID) if unset — **advertising name only**, separate from the LoRa node ID. Custom **`NAME:…`** / **`--name`** overrides this. |
 | **Finding your ID** | USB serial **115200** → boot log or `stats` output; also visible in the official app after pairing. |
 | **Roster population** | **Not automatic.** You must configure the **same** ID list on **every** node in the mesh. |
 | **Roster list content** | Use the **same** ID set on every node. **Including your own node ID is recommended** for clarity (firmware always accepts **self** even if omitted; probe slotting adds **self** when missing). |
@@ -797,6 +808,8 @@ roster set 20415,25940
 roster
 roster clear
 ```
+
+(`roster off` is equivalent to `roster clear`.) Changes from **`roster set`** are saved to **NVS** and survive reboot.
 
 Replace `20415,25940` with the **actual node IDs** from your devices. Every node in the mesh must carry the **same comma-separated list** of **all participating peers** (including your own ID is **recommended**, not strictly required — see [Node ID vs roster](#node-id-vs-roster-important)).
 
@@ -1040,7 +1053,7 @@ Recommended actions:
 - Broadcast messaging does **not** use ACK tracking in the current build
 - This firmware is intended to communicate only with the official **MeshGrid** mobile application distributed through the **App Store** and **Google Play Store**
 - Compatibility with third-party applications, unofficial clients, or alternative software is not guaranteed
-- Only use official firmware binaries published in this repository or official MeshGrid release channels
+- Only use official firmware binaries from **[GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases)** for this project (or other official MeshGrid release channels)
 - Flashing unofficial or modified binaries may cause instability, incompatibility, or loss of expected functionality
 - Always verify that the firmware release matches your hardware revision before installation
 - Do not assume all releases use the same binary layout or flash offsets
@@ -1248,7 +1261,7 @@ Users are solely responsible for:
 
 ## License
 
-Official **binary** releases published in this repository are offered under **[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)** for **non-commercial** sharing of **unmodified** builds, with attribution. The full notice, including reserved rights of the copyright holder, is in **[`LICENSE`](LICENSE)**.
+Official **binary** releases distributed via **[GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases)** for this project are offered under **[CC BY-NC-ND 4.0](https://creativecommons.org/licenses/by-nc-nd/4.0/)** for **non-commercial** sharing of **unmodified** builds, with attribution. The full notice, including reserved rights of the copyright holder, is in **[`LICENSE`](LICENSE)**.
 
 The copyright holder **retains all rights not granted** under that public license, including **commercial sale** of firmware or pre-flashed devices, **separate commercial or OEM agreements**, and **authorized distribution** channels.
 
