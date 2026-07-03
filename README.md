@@ -774,7 +774,7 @@ The **roster** (also called **allow-list**) is an optional NVS-stored list of up
 | --- | --- |
 | **Node ID** | Random **16-bit** value (`1 … 65534`) generated on **first boot** and stored in NVS. **Not** user-assigned. **Not** the USB serial or chip MAC. |
 | **BLE device name** | Default **`MeshGrid_XX`** (`XX` = 01–99 from chip ID) if unset — **advertising name only**, separate from the LoRa node ID. Custom **`NAME:…`** / **`--name`** overrides this. |
-| **Finding your ID** | USB serial **115200** → boot log or `stats` output; also visible in the official app after pairing. |
+| **Finding your ID** | USB serial **115200** → boot log line with **`node=`** (e.g. `[MeshGrid] BLE ready … node=20415 …`); also visible in the official app after pairing. Use **`stats`** for **`BUILD=`** verification, not for the node ID. |
 | **Roster population** | **Not automatic.** You must configure the **same** ID list on **every** node in the mesh. |
 | **Roster list content** | Use the **same** ID set on every node. **Including your own node ID is recommended** for clarity (firmware always accepts **self** even if omitted; probe slotting adds **self** when missing). |
 | **CSV order** | Entry order in `ROSTER:…` or `roster set …` does **not** define probe slot rank — see below. |
