@@ -95,6 +95,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
 - [Radio Compliance and User Responsibility](#radio-compliance-and-user-responsibility)
 - [Release Scope](#release-scope)
 - [Current Build Characteristics](#current-build-characteristics)
+  - [Firmware stability and field validation (BUILD 107)](#firmware-stability-and-field-validation-build-107)
 - [Firmware Installation](#firmware-installation)
   - [Requirements](#requirements)
   - [Recommended Flashing Method](#recommended-flashing-method)
@@ -249,7 +250,7 @@ Typical layout in the published sketch (ESP32 **dual-core**):
 - **BLE work** (notifications, pairing, decrypt/encrypt queues) and **LoRa mesh + scheduler + ACK/retry + RF dedup/relay** run as separate **FreeRTOS** tasks; **GPS NMEA** parsing runs when `ENABLE_GPS_TASK` is enabled.
 - **Task watchdog** is configured for a **~15 second** timeout (reset on unrecoverable hang).
 - Default **CPU frequency** for the power profile is **80 MHz** when idle; **Wi‑Fi is disabled** at boot.
-- **Internal caps (order-of-magnitude; see firmware for exact names):** pending **ACK** slots **12**, transmit **scheduler** slots **24**, **pending direct** staging slots **4**, **replay** tracking for **24** sender contexts, persisted **pending TX** blob count **5** (with an internal ring up to **8** before NVS write coalescing), BLE notify **hold ring 24**. These prevent unbounded RAM use and flash wear.
+- **Internal caps (order-of-magnitude; see firmware for exact names):** pending **ACK** slots **12**, transmit **scheduler** slots **24**, **pending direct** staging slots **4**, **anti-replay sender tracking** for **24** contexts (distinct from pending TX replay below), persisted **pending TX** blob count **5** replayed after reboot (with an internal ring up to **8** before NVS write coalescing), BLE notify **hold ring 24**. These prevent unbounded RAM use and flash wear.
 - **Signal-test / probe airtime (BUILD 106+):** mesh chat probes use **8** stagger slots at **600 ms** spacing. With roster enabled, slot index follows **sorted roster node IDs** (plus self); without roster, callsign hash **`% 8`**. Flood duplicate broadcast TX is skipped when channel pressure **≥ 2**.
 
 ### Security model limitations
@@ -409,14 +410,22 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - Tracked unicast delivery currently uses an ACK timeout/retry model with jitter and up to **3 retransmissions** after the initial transmission
 - Relay behavior is enabled with a current **maximum hop count of 4**
 - RF duplicate suppression is enabled with a **3-second deduplication window**
-- Pending outgoing mesh packets are staged in NVS and replayed after reboot; the current staged packet limit is **5**
+- Pending outgoing mesh packets are staged in NVS and **replayed after reboot**; the current staged packet limit is **5** (separate from **anti-replay** sender tracking — see [Runtime tasks](#runtime-tasks-watchdog-and-internal-limits))
 - The optional node **roster / allow-list** stores up to **8** node IDs — see [Authorized Node Roster (Allow-List)](#authorized-node-roster-allow-list)
-- **Internal queues (typical):** **12** concurrent **ACK** trackers, **24** **scheduler** TX slots, **4** **pending direct** slots, **24** **replay** sender slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
+- **Internal queues (typical):** **12** concurrent **ACK** trackers, **24** **scheduler** TX slots, **4** **pending direct** slots, **24** **anti-replay sender tracking** slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
 - **Current public binary:** **BUILD 107** (`factory_v0.0.5.bin`) — see **[MeshGrid ESP32 - factory_v0.0.5 (BUILD 107)](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5)** on GitHub Releases
 - GPS UART (when hardware is present) defaults to **9600 baud, 8N1** on the documented pins; GPS transmission logic is enabled in the build with a default position broadcast interval of **30 seconds** when a compatible receiver is present and producing fixes
 - **BLE telemetry cadence (when connected and authenticated):** local **GPS status** updates about every **3 seconds**; **battery** status about every **10 seconds** (see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting))
 - **Battery monitoring** (when wired as documented): the node samples cell voltage on **GPIO34** through a **10kΩ + 10kΩ** divider, applies smoothing and stabilization in firmware, and sends **BLE status telemetry** to the official app about every **10 seconds** while connected - see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
+
+### Firmware stability and field validation (BUILD 107)
+
+Summary of validated behavior for the current public release (**[factory v0.0.5 / BUILD 107](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5)**). Roster setup and multi-node limits: [Authorized Node Roster](#authorized-node-roster-allow-list).
+
+- **Signal Test / sustained mesh probes (BUILD 102):** fixes a lockup after hundreds of probes when the official app runs Signal Test with BLE connected. BLE status/RF telemetry is shed under queue pressure; signal-test traffic uses a lighter path; stuck LoRa scheduler slots are reclaimed after **4.5 s**. Validated with **420** dual-node probes (~35 min) without reset.
+- **Multi-node airtime / BLE backpressure (BUILD 106–107):** LoRa→phone BLE notifies are skipped when the phone is not connected; signal-test probes are dropped if the BLE notify queue is nearly full. Probe TX uses **8 × 600 ms** slots (roster-aware when roster is enabled). Flood duplicate broadcast TX is suppressed under channel pressure **≥ 2**. Scheduler capacity **16 → 24**; ACK trackers **8 → 12**; pending-direct buffer **2 → 4**.
+- **Field validation (BUILD 107):** dual-node rostered soak **~6 h** (~99.96% / 100% probe delivery); **2 h** roster simulation with **5** roster IDs and **2** live nodes (Sim-B) completed without lockup. Bench commands: `txprobe`, `stress on` / `stress off` (see [Serial Diagnostics](#serial-diagnostics-and-maintenance)).
 
 These items are not merely implementation details. They define practical behavior such as payload budgeting, interoperability expectations, delivery semantics, and what should or should not be assumed during deployment.
 
@@ -554,22 +563,22 @@ There are two common firmware release formats.
 
 ### Option A - Single Merged Firmware `.bin`
 
-If the release contains **one merged firmware file**, flash it at address `0x0000`:
+If the release contains **one merged firmware file**, flash it at address **`0x0000`**. For the current release, download **`factory_v0.0.5.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5) (always use the filename from the release you are flashing):
 
 ```bash
-esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
+esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
 ```
 
 #### Example (Windows)
 
 ```bash
-esptool.py --chip esp32 --port COM5 --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
+esptool.py --chip esp32 --port COM5 --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
 ```
 
 #### Example (macOS / Linux)
 
 ```bash
-esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash -z 0x0000 MeshGrid-Node-firmware.bin
+esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
 ```
 
 ---
@@ -756,6 +765,7 @@ The **roster** (also called **allow-list**) is an optional NVS-stored list of up
 | **Node ID** | Random **16-bit** value (`1 … 65534`) generated on **first boot** and stored in NVS. **Not** user-assigned. **Not** the USB serial or chip MAC. |
 | **Finding your ID** | USB serial **115200** → boot log or `stats` output; also visible in the official app after pairing. |
 | **Roster population** | **Not automatic.** You must configure the **same** ID list on **every** node in the mesh. |
+| **Roster list content** | Use the **same** ID set on every node. **Including your own node ID is recommended** for clarity (firmware always accepts **self** even if omitted; probe slotting adds **self** when missing). |
 | **CSV order** | Entry order in `ROSTER:…` or `roster set …` does **not** define probe slot rank — see below. |
 
 ### Allow-list rules (when roster is enabled)
@@ -788,7 +798,7 @@ roster
 roster clear
 ```
 
-Replace `20415,25940` with the **actual node IDs** from your devices. Every node in the mesh must carry the **same comma-separated list** (including its own ID).
+Replace `20415,25940` with the **actual node IDs** from your devices. Every node in the mesh must carry the **same comma-separated list** of **all participating peers** (including your own ID is **recommended**, not strictly required — see [Node ID vs roster](#node-id-vs-roster-important)).
 
 **Using `provision.py` (private source tree only):** pass `--roster` in the same run as the mesh password — see [Optional: provisioning helper script](#optional-provisioning-helper-script-provisionpy). Example:
 
@@ -824,7 +834,7 @@ Example: roster IDs `25940, 20415` → sorted `20415, 25940` → node **20415** 
 | **Recommended production ceiling** (GPS + chat) | **≤ 5** nodes |
 | **7–8 nodes** | **Marginal** for sustained airtime unless traffic is reduced |
 
-Before relying on multi-node **Signal Test**, map sync, or long soak runs, confirm the roster lists **every** live node ID on **every** node. See also [Current Build Characteristics](#current-build-characteristics) and the [v0.0.5 release notes](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5).
+Before relying on multi-node **Signal Test**, map sync, or long soak runs, confirm the roster lists **every** live node ID on **every** node. See [Firmware stability and field validation (BUILD 107)](#firmware-stability-and-field-validation-build-107), [Current Build Characteristics](#current-build-characteristics), and the [v0.0.5 release notes](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5).
 
 ---
 
@@ -1135,12 +1145,6 @@ When `ENABLE_BATTERY_MONITOR` is enabled in firmware (default in current sources
 - Linear range: **3.35 V cell → 0% display**, **4.20 V cell → 100%** (`BATTERY_CELL_MV_EMPTY` / `BATTERY_CELL_MV_FULL`).
 - **Calibration:** ESP32 ADC plus divider tolerance can read **tens to ~150 mV low** versus a multimeter on the cell. Firmware exposes **`BATTERY_ADC_CALIBRATION_OFFSET_MV`** (millivolts added to the reconstructed cell voltage before display/telemetry; default in recent builds is **+130 mV** - tune per board if needed).
 - **Telemetry interval:** about **10 s** between local battery status notifications while BLE is connected and authenticated (`BLE_LOCAL_BATTERY_STATUS_INTERVAL_MS`).
-
-**Stability behavior (factory `v0.0.5` / BUILD 107)**
-
-- **Signal Test / sustained mesh probes (BUILD 102):** fixes a lockup after hundreds of probes when the official app runs Signal Test with BLE connected. BLE status/RF telemetry is shed under queue pressure; signal-test traffic uses a lighter path; stuck LoRa scheduler slots are reclaimed after 4.5 s. Validated with 420 dual-node probes (~35 min) without reset.
-- **Multi-node airtime / BLE backpressure (BUILD 106–107):** LoRa→phone BLE notifies are skipped when the phone is not connected; signal-test probes are dropped if the BLE notify queue is nearly full. Probe TX uses **8 × 600 ms** slots (roster-aware when roster is enabled). Flood duplicate broadcast TX is suppressed under channel pressure **≥ 2**. Scheduler capacity **16 → 24**; ACK trackers **8 → 12**; pending-direct buffer **2 → 4**.
-- **Field validation (BUILD 107):** dual-node rostered soak **~6 h** (~99.96% / 100% probe delivery); **2 h** roster simulation with **5** roster IDs and **2** live nodes (Sim-B) completed without lockup. Bench commands: `txprobe`, `stress on` / `stress off` (see [Serial Diagnostics](#serial-diagnostics-and-maintenance)). Roster setup and capacity limits: [Authorized Node Roster](#authorized-node-roster-allow-list).
 
 **Battery display stability (from `factory_v0.0.3` / BUILD 87 onward)**
 
