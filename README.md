@@ -95,7 +95,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
 - [Radio Compliance and User Responsibility](#radio-compliance-and-user-responsibility)
 - [Release Scope](#release-scope)
 - [Current Build Characteristics](#current-build-characteristics)
-  - [Firmware stability and field validation (BUILD 107)](#firmware-stability-and-field-validation-build-107)
+  - [Firmware stability and field validation (BUILD 108)](#firmware-stability-and-field-validation-build-108)
 - [Firmware Installation](#firmware-installation)
   - [Requirements](#requirements)
   - [Recommended Flashing Method](#recommended-flashing-method)
@@ -104,7 +104,7 @@ Communication between nodes and the official app uses **MeshLink v2**, a **MeshG
   - [Flashing the Firmware](#flashing-the-firmware)
   - [Manual Bootloader Mode](#manual-bootloader-mode)
   - [First Boot and Provisioning](#first-boot-and-provisioning)
-    - [Upgrading from a previous release (e.g. v0.0.4 → v0.0.5)](#upgrading-from-a-previous-release-eg-v004--v005)
+    - [Upgrading from a previous release (e.g. v0.0.5 → v0.0.6)](#upgrading-from-a-previous-release-eg-v005--v006)
   - [Optional: Erase Flash Before Installation](#optional-erase-flash-before-installation)
   - [Verifying the Installation](#verifying-the-installation)
 - [Getting Started After Installation](#getting-started-after-installation)
@@ -415,14 +415,23 @@ Based on the current `.ino` implementation, the present firmware build has the f
 - The optional node **roster / allow-list** stores up to **8** node IDs — see [Authorized Node Roster (Allow-List)](#authorized-node-roster-allow-list)
 - **Internal queues (typical):** **12** concurrent **ACK** trackers, **24** **scheduler** TX slots, **4** **pending direct** slots, **24** **anti-replay sender tracking** slots (see [Runtime tasks, watchdog, and internal limits](#runtime-tasks-watchdog-and-internal-limits))
 - The firmware clears the persisted pending packet queue automatically when the stored build number changes across firmware versions
-- **Current public binary:** **BUILD 107** (`factory_v0.0.5.bin`) — see **[MeshGrid ESP32 - factory_v0.0.5 (BUILD 107)](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5)** on GitHub Releases
-- GPS UART (when hardware is present) defaults to **9600 baud, 8N1** on the documented pins; GPS transmission logic is enabled in the build with a default position broadcast interval of **30 seconds** when a compatible receiver is present and producing fixes
+- **Current public binary:** **BUILD 108** (`factory_v0.0.6.bin`) — see **[MeshGrid ESP32 - factory_v0.0.6 (BUILD 108)](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.6)** on GitHub Releases
+- GPS UART (when hardware is present) defaults to **9600 baud, 8N1** on the documented pins; GPS transmission logic is enabled in the build with a default position broadcast interval of **45 seconds** when a compatible receiver is present and producing fixes
+- **Phone-originated GPS (BUILD 108+):** coordinates sent from the official app are held in a **slot-scheduled pending queue** and transmitted on the **normal LoRa TX queue** (not the priority fast lane), aligned with roster GPS slot timing — same pipeline as on-module GPS
 - **BLE telemetry cadence (when connected and authenticated):** local **GPS status** updates about every **3 seconds**; **battery** status about every **10 seconds** (see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting))
 - **Battery monitoring** (when wired as documented): the node samples cell voltage on **GPIO34** through a **10kΩ + 10kΩ** divider, applies smoothing and stabilization in firmware, and sends **BLE status telemetry** to the official app about every **10 seconds** while connected - see [Battery Voltage Sense and App Reporting](#battery-voltage-sense-and-app-reporting)
 
-### Firmware stability and field validation (BUILD 107)
+### Firmware stability and field validation (BUILD 108)
 
-Summary of validated behavior for the current public release (**[factory v0.0.5 / BUILD 107](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5)**). Roster setup and multi-node limits: [Authorized Node Roster](#authorized-node-roster-allow-list).
+Summary for the current public release (**[factory v0.0.6 / BUILD 108](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.6)**). Roster setup and multi-node limits: [Authorized Node Roster](#authorized-node-roster-allow-list).
+
+**New in BUILD 108 (v0.0.6):**
+
+- **Queued phone GPS:** app-sent GPS coordinates no longer bypass roster slot timing via the priority TX path; they enter a pending queue and share the same **queue → scheduler → LoRa** pipeline as other outbound traffic.
+- **On-module GPS** uses the **normal TX queue** (not the priority fast lane).
+- **GPS broadcast interval** increased from **30 s** to **45 s** to reduce LoRa airtime load on **5-node** meshes.
+
+**Carried forward from BUILD 107 and earlier:**
 
 - **Signal Test / sustained mesh probes (BUILD 102):** fixes a lockup after hundreds of probes when the official app runs Signal Test with BLE connected. BLE status/RF telemetry is shed under queue pressure; signal-test traffic uses a lighter path; stuck LoRa scheduler slots are reclaimed after **4.5 s**. Validated with **420** dual-node probes (~35 min) without reset.
 - **Multi-node airtime / BLE backpressure (BUILD 106–107):** LoRa→phone BLE notifies are skipped when the phone is not connected; signal-test probes are dropped if the BLE notify queue is nearly full. Probe TX uses **8 × 600 ms** slots (roster-aware when roster is enabled). Flood duplicate broadcast TX is suppressed under channel pressure **≥ 2**. Scheduler capacity **16 → 24**; ACK trackers **8 → 12**; pending-direct buffer **2 → 4**.
@@ -564,22 +573,22 @@ There are two common firmware release formats.
 
 ### Option A - Single Merged Firmware `.bin`
 
-If the release contains **one merged firmware file**, flash it at address **`0x0000`**. For the current release, download **`factory_v0.0.5.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5) (always use the filename from the release you are flashing):
+If the release contains **one merged firmware file**, flash it at address **`0x0000`**. For the current release, download **`factory_v0.0.6.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.6) (always use the filename from the release you are flashing):
 
 ```bash
-esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
+esptool.py --chip esp32 --port <PORT> --baud 460800 write_flash -z 0x0000 factory_v0.0.6.bin
 ```
 
 #### Example (Windows)
 
 ```bash
-esptool.py --chip esp32 --port COM5 --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
+esptool.py --chip esp32 --port COM5 --baud 460800 write_flash -z 0x0000 factory_v0.0.6.bin
 ```
 
 #### Example (macOS / Linux)
 
 ```bash
-esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash -z 0x0000 factory_v0.0.5.bin
+esptool.py --chip esp32 --port /dev/cu.SLAB_USBtoUART --baud 460800 write_flash -z 0x0000 factory_v0.0.6.bin
 ```
 
 ---
@@ -703,14 +712,15 @@ python3 provision.py MyPrivateMesh2024 /dev/cu.usbserial-0001 --roster OFF
 
 This point is operationally critical: **a successful flash is not equivalent to a usable radio node**. Without a valid provisioned key, the current secure-mode build can remain unable to participate in the mesh.
 
-### Upgrading from a previous release (e.g. v0.0.4 → v0.0.5)
+### Upgrading from a previous release (e.g. v0.0.5 → v0.0.6)
 
-- Download the new **`factory_v0.0.5.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5) and flash at **`0x0000`** (see [Flashing the Firmware](#flashing-the-firmware)).
+- Download the new **`factory_v0.0.6.bin`** from [GitHub Releases](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.6) and flash at **`0x0000`** (see [Flashing the Firmware](#flashing-the-firmware)).
 - **Same mesh password:** no re-provisioning required if NVS still holds a valid key with matching KDF/policy metadata.
 - **Roster / device name:** preserved in NVS across upgrade unless you erase flash.
 - **Pending TX replay queue:** cleared automatically when the stored **BUILD** number changes (existing behavior).
-- After flash, verify serial **115200** → `[MeshGrid] boot BUILD 107` or `stats` → `BUILD=107`.
+- After flash, verify serial **115200** → `[MeshGrid] boot BUILD 108` or `stats` → `BUILD=108`; GPS slot log should show `every=45s`.
 - If pairing or key-policy errors appear, reprovision after an optional `erase_flash` rather than assuming old state remains valid.
+- **Recommended:** flash all nodes in a mesh to **BUILD 108** together so GPS slot and phone-GPS queue behaviour is consistent fleet-wide.
 
 
 ## Optional: Erase Flash Before Installation
@@ -839,6 +849,14 @@ Signal-test / bench probes use **8** transmit slots spaced **600 ms** apart to s
 
 Example: roster IDs `25940, 20415` → sorted `20415, 25940` → node **20415** uses slot **0**, node **25940** uses slot **1**.
 
+### Roster-aware GPS slotting (BUILD 108+)
+
+On-module GPS and **phone-originated GPS** (official app) share the same **roster slot schedule**:
+
+- Each node transmits GPS in its assigned phase within the **45 s** broadcast window (e.g. **5** rostered nodes → ~**9 s** slot width per node).
+- Phone GPS is **not** sent immediately on BLE receive; it waits in a pending queue until the node's GPS slot and channel-quiet checks pass, then enters the normal LoRa TX queue.
+- If the channel is busy (pressure, pending ACKs, recent LoRa activity), GPS cycles may defer — this is expected and reduces collisions.
+
 ### Multi-node capacity (planning)
 
 | Deployment size | Guidance |
@@ -847,7 +865,7 @@ Example: roster IDs `25940, 20415` → sorted `20415, 25940` → node **20415** 
 | **Recommended production ceiling** (GPS + chat) | **≤ 5** nodes |
 | **7–8 nodes** | **Marginal** for sustained airtime unless traffic is reduced |
 
-Before relying on multi-node **Signal Test**, map sync, or long soak runs, confirm the roster lists **every** live node ID on **every** node. See [Firmware stability and field validation (BUILD 107)](#firmware-stability-and-field-validation-build-107), [Current Build Characteristics](#current-build-characteristics), and the [v0.0.5 release notes](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.5).
+Before relying on multi-node **Signal Test**, map sync, or long soak runs, confirm the roster lists **every** live node ID on **every** node. See [Firmware stability and field validation (BUILD 108)](#firmware-stability-and-field-validation-build-108), [Current Build Characteristics](#current-build-characteristics), and the [v0.0.6 release notes](https://github.com/toygar/MeshGrid-Node-Firmware/releases/tag/v0.0.6).
 
 ---
 
